@@ -7,11 +7,21 @@ RGB* read_pixels(uint8_t* pixel_data, uint32_t width, uint32_t height) {
         return NULL; 
     }
 
+    // We need to take in consideration row padding for BMP format
+    // Each row is padded to be a multiple of 4 bytes
+    uint32_t padding = (4 - ((width * 3) % 4)) % 4;
+    uint32_t row_stride = (width * 3) + padding;            // This is the actual width of each row in BMP, expressed in bytes
+
     // BMP pixel data is stored in BGR format
-    for (uint32_t i = 0; i < width * height; i++) {
-        pixels[i].b = pixel_data[i * 3 + 0];
-        pixels[i].g = pixel_data[i * 3 + 1];
-        pixels[i].r = pixel_data[i * 3 + 2];
+    for(uint32_t i = 0; i < height; i++) {
+        for(uint32_t j = 0; j < width; j++) {
+            uint32_t pixel_idx = i * width + j;             // linear index
+            uint32_t bmp_index = i * row_stride + j * 3;    // index in BMP data
+            
+            pixels[pixel_idx].b = (float)pixel_data[bmp_index];     
+            pixels[pixel_idx].g = (float)pixel_data[bmp_index + 1]; 
+            pixels[pixel_idx].r = (float)pixel_data[bmp_index + 2]; 
+        }
     }
 
     return pixels;
