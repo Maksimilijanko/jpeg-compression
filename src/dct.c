@@ -58,7 +58,7 @@ void perform_dct_one_block(float *block, float *out_dct_block) {
 
 void quantize_block(float *dct_block, const uint8_t *quant_table, int16_t* out_quantized_block) {
     for(int i = 0; i < 64; i++) {
-        out_quantized_block[i] = (int16_t)roundf(dct_block[i] / quant_table[i]);         // rounting to nearest integer
+        out_quantized_block[i] = (int16_t)roundf(dct_block[i] / quant_table[i]);         // rounding to nearest integer
     }
 
 }
@@ -72,3 +72,22 @@ void perform_dct(float *blocks, uint32_t blocks_w, uint32_t blocks_h, float *out
     }
 }
 
+void zigzag_order(const int16_t *input_block, int16_t *output_block) {
+    /*
+    * Instead of computing the zigzag order on the fly, we use a predefined mapping.
+    */
+    const uint8_t zigzag_map[64] = {
+     0,  1,  8, 16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36,
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
+    };
+
+    for(int i = 0; i < 64; i++) {
+        output_block[i] = input_block[zigzag_map[i]];
+    }
+}
