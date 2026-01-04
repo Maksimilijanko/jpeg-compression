@@ -1,13 +1,14 @@
 #include "dct.h"
 #include <stdlib.h>
 #include <math.h>
+#include "jpeg_quantization_table.h"
+
 
 void center_around_zero(float* grayscale_values, uint32_t width, uint32_t height) {
     for (uint32_t i = 0; i < width * height; i++) {
         grayscale_values[i] -= 128.0f; 
     }
 }
-
 
 void image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, float *out_blocks) {
     uint32_t blocks_w = (width + 7) / 8;             // ceiling division
@@ -32,7 +33,6 @@ void image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *ou
     }
 
 }
-
 
 void perform_dct_one_block(float *block, float *out_dct_block) {
     for(int u = 0; u < 8; u++) {
@@ -62,3 +62,13 @@ void quantize_block(float *dct_block, const uint8_t *quant_table, int16_t* out_q
     }
 
 }
+
+void perform_dct(float *blocks, uint32_t blocks_w, uint32_t blocks_h, float *out_dct_blocks) {
+    uint32_t total_blocks = blocks_w * blocks_h;
+
+    /* Process each block */
+    for(uint32_t b = 0; b < total_blocks; b++) {
+        perform_dct_one_block(blocks + (b * 64), out_dct_blocks + (b * 64));
+    }
+}
+
