@@ -91,3 +91,116 @@ void zigzag_order(const int16_t *input_block, int16_t *output_block) {
         output_block[i] = input_block[zigzag_map[i]];
     }
 }
+
+void bw_write(BitWriter *bw, uint32_t code, int length) {
+    for (int i = length - 1; i >= 0; i--) {
+        // Isolate the i-th bit from the code
+        uint8_t bit = (code >> i) & 1;
+        
+        // Write it to the current byte in the BitWriter
+        if (bit) {
+            // Write 1 to the current position using shifting and OR
+            bw->current |= (1 << (7 - bw->bit_pos));
+        }
+        
+        // Move to the next bit position
+        bw->bit_pos++;
+        
+        // Check if we have filled the current byte. If so, write it to the buffer, reset current byte and bit position.
+        if (bw->bit_pos == 8) {
+            bw->buffer[bw->byte_pos++] = bw->current;
+            bw->current = 0;
+            bw->bit_pos = 0;
+        }
+    }
+}
+
+VLI get_vli(int16_t value) {
+    VLI vli;
+    int16_t temp = value;
+
+    if(value < 0) {
+        value = -value;
+        temp--;             // transform 2's complement to 1's complement
+    }
+
+    // Calculate number of bits needed
+    // Calculation is done by shifting right until value becomes 0
+    // This is why we work with absolute value - we only care about magnitude here
+    uint8_t nbits = 0;
+    while (value > 0) {
+        nbits++;
+        value >>= 1;
+    }
+
+    vli.len = nbits;
+    vli.bits = (temp & ((1 << nbits) - 1)); // Mask to get the lower nbits
+    return vli;
+}
+
+int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, 
+                            uint8_t* out_encoded_data, uint32_t *out_data_size) {
+    
+    /* Create BitWriter to write into out_encoded_data */
+    BitWriter bw = { .buffer = out_encoded_data, .byte_pos = 0, .bit_pos = 0, .current = 0 };
+    
+    // Predictive DC encoding
+    int16_t diff = dct_block[0] - prev_dc;
+    VLI vli = get_vli(diff);
+    
+    // Huffman DC encoding
+    HuffmanCode hc = huff_dc_lum[vli.len];
+    bw_write(&bw, hc.code, hc.len);             // write DC Huffman code into bitstream
+    
+    if (vli.len > 0) {
+        bw_write(&bw, vli.bits, vli.len);       // write DC VLI bits into bitstream
+    }
+
+    int zeros_count = 0;
+    
+    for (int i = 1; i < 64; i++) {              // Skip DC component, start from AC components
+        int16_t val = dct_block[i];
+
+        if (val == 0) {
+            zeros_count++;
+        } else {
+            // Ako imamo niz nula
+            while (zeros_count > 15) {
+                // ZRL (Zero Run Length): 16 continuous zeros
+                // Symbol is 0xF0
+                // We perform Huffman encoding for ZRL
+                bw_write(&bw, huff_ac_lum[0xF0].code, huff_ac_lum[0xF0].len);
+                zeros_count -= 16;
+            }
+
+            // Get VLI for the non-zero value
+            vli = get_vli(val);
+            
+            // Build the symbol: (RUNLENGTH << 4) | SIZE
+            uint8_t symbol = (zeros_count << 4) | vli.len;
+            
+            // Get Huffman code for the symbol
+            bw_write(&bw, huff_ac_lum[symbol].code, huff_ac_lum[symbol].len);
+            
+            // Write the actual bits of the value
+            bw_write(&bw, vli.bits, vli.len);
+            
+            zeros_count = 0; 
+        }
+    }
+
+    // EOB handling
+    if (zeros_count > 0) {
+        // If there are trailing zeros, write EOB (symbol 0x00)
+        bw_write(&bw, huff_ac_lum[0x00].code, huff_ac_lum[0x00].len);
+    }
+    
+    
+    if (bw.bit_pos > 0) {
+        bw.buffer[bw.byte_pos++] = bw.current; // Force write last partial byte into bitstream
+    }
+
+    *out_data_size = bw.byte_pos;
+    
+    return dct_block[0];                       // Return current DC for next block's prediction       
+}

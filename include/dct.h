@@ -8,6 +8,38 @@
 /* DCT function declarations */
 
 /*
+* Structure for handling bit-level writing.
+*/
+typedef struct {
+    uint8_t *buffer;    // Buffer in which we write encoded coefficients
+    uint32_t byte_pos;  // Current byte in the buffer
+    uint32_t bit_pos;   // Current bit position in the current byte (0-7)
+    uint8_t current;    // Current byte being constructed
+} BitWriter;
+
+/*
+*  Structure representing a Huffman code.
+*/
+typedef struct {
+    uint16_t code;      // Code itself
+    uint8_t len;        // Length of the code in bits
+} HuffmanCode;
+
+/*
+* Structure representing a Variable Length Integer.
+* Used for encoding non-zero DCT coefficients.
+*/
+typedef struct {
+    uint16_t bits;      // Bits representing the value
+    uint8_t len;        // Length of the bits
+} VLI;                  // VLI - Variable Length Integer
+
+
+/* Huffman tables */
+extern const HuffmanCode huff_dc_lum[16];   // DC table
+extern const HuffmanCode huff_ac_lum[256];  // AC table
+
+/*
  * Centers the grayscale values around zero.
  * DCT works with cosine waves oscillating around zero.
  * This function shifts the grayscale values by subtracting 128.
@@ -53,13 +85,14 @@ void quantize_block(float *dct_block, const uint8_t *quant_table, int16_t* out_q
 
 /*
     * Encodes the DCT coefficients.
-    * Input: pointer to an array of DCT coefficients for a single block.
+    * Input: pointer to an array of DCT coefficients for a single block. Coefficients need to be in zigzag order.
     * Input: pointer to an array to store the encoded data.
     * Input: pointer to store the size of the encoded data.
     * Return value is stored in out_encoded_data parameter which should be pre-allocated by the caller.
+    * Returns the actual DC coefficient, so it can be used as 'prev_dc' for the next block.
     * Also outputs the size of the encoded data via out_data_size parameter.
     */
-void encode_coefficients(int16_t *dct_block, uint8_t* out_encoded_data, uint32_t *out_data_size);
+int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, uint8_t* out_encoded_data, uint32_t *out_data_size);
 
 /*
     * Serializes the encoded data to a file.
@@ -76,5 +109,21 @@ void serialize_to_file(const char *filename, uint8_t *encoded_data, uint32_t dat
     * Return value is stored in out_block parameter which should be pre-allocated by the caller.
     */
 void zigzag_order(const int16_t *input_block, int16_t *output_block);
+
+/*
+    * Writes a code to the BitWriter.
+    * Input: pointer to a BitWriter struct.
+    * Input: code to write.
+    * Input: length of the code in bits.
+    */
+void bw_write(BitWriter *bw, uint32_t code, int length);
+
+/*
+    * Returns the VLI (Variable Length Integer) representation of a value.
+    * Input: value to encode.
+    * Return: VLI structure containing the code and its length.
+    */
+VLI get_vli(int16_t value);
+
 
 #endif
