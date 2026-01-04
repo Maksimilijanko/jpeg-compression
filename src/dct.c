@@ -1,5 +1,6 @@
 #include "dct.h"
 #include <stdlib.h>
+#include <math.h>
 
 float * image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h) {
     uint32_t blocks_w = (width + 7) / 8;             // ceiling division
@@ -26,4 +27,29 @@ float * image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t 
     }
 
     return blocks;
+}
+
+
+float * perform_dct_one_block(float *block) {
+    float* dct_block = (float*)malloc(64 * sizeof(float));
+
+    for(int u = 0; u < 8; u++) {
+        for(int v = 0; v < 8; v++) {
+            float sum = 0.0f;
+            for(int x = 0; x < 8; x++) {
+                for(int y = 0; y < 8; y++) {
+                    sum += block[y * 8 + x] * 
+                           cosf(((2 * x + 1) * u * PI) / 16.0f) * 
+                           cosf(((2 * y + 1) * v * PI) / 16.0f);
+                }
+            }
+
+            float cu = (u == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
+            float cv = (v == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
+
+            dct_block[v * 8 + u] = 0.25f * cu * cv * sum;
+        }
+    }
+
+    return dct_block;
 }
