@@ -164,7 +164,7 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
         if (val == 0) {
             zeros_count++;
         } else {
-            // Ako imamo niz nula
+            // Handle any preceding zeros
             while (zeros_count > 15) {
                 // ZRL (Zero Run Length): 16 continuous zeros
                 // Symbol is 0xF0
@@ -197,7 +197,7 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
     
     
     if (bw.bit_pos > 0) {
-        bw.buffer[bw.byte_pos++] = bw.current; // Force write last partial byte into bitstream
+        bw.buffer[bw.byte_pos++] = bw.current;      // Flush out the last byte if it has remaining bits
     }
 
     *out_data_size = bw.byte_pos;
