@@ -35,12 +35,6 @@ BMP_IMAGE load_bmp_image(const char* inputFile) {
          return image;
     }
 
-    // Calculating true dimensions
-    // Standard BMPs are read bottom-up, but modern BMPs can be top-down
-    // Therefore, we take absolute height for memory allocation
-    int32_t true_width = image.info.width;
-    int32_t true_height = abs(image.info.height); 
-
     // Calculate data size
     // Data size can be calculated as difference between file size and pixel data offset
     // Data offset differs based on headers size
