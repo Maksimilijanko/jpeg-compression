@@ -11,7 +11,7 @@ int main(int argc, char **argv) {
     BMP_IMAGE image = load_bmp_image(params.inputFile); 
 
     // pixels is dyn. allocated - needs to be freed
-    RGB* pixels = read_pixels(image.buffer, image.info.width, image.info.height);
+    RGB* pixels = read_pixels(image.buffer, image.info.width, image.info.height, image.info.height <= 0);
 
     // grayscale_y is dyn. allocated - needs to be freed
     float* grayscale_y = convert_to_grayscale(pixels, image.info.width, image.info.height);
@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     perform_dct(blocks, blocks_w, blocks_h, dct_coeffs);
     free(blocks);
 
-    printf("DCT finished.");
+    printf("DCT finished.\n");
 
     uint32_t buffer_size = image.info.width * image.info.height * 2; 
     if (buffer_size < 4096) buffer_size = 4096; // Minimum 4KB
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
         bw_put_byte(&bw, bw.current);
     }
 
-    printf("Encoding finished.");
+    printf("Encoding finished.\n");
     printf("Original size (Raw Y): %u bytes\n", image.info.width * image.info.height);
     printf("Compressed size (Scan Data): %u bytes\n", bw.byte_pos);
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     if(f_out) {
         write_to_jfif(f_out, bw.buffer, bw.byte_pos, image.info.width, image.info.height);
         fclose(f_out);
-        printf("JFIF serialization finished.");
+        printf("JFIF serialization finished.\n");
     }
 
     free(dct_coeffs);
