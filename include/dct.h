@@ -57,9 +57,9 @@ void center_around_zero(float* grayscale_values, uint32_t width, uint32_t height
     * Pads the image with edge pixels if necessary (clamp).
     * Also outputs the number of blocks in width and height via out_blocks_w and out_blocks_h.
     * Blocks are stored in row-major order.
-    * Return value is stored in out_blocks parameter which should be pre-allocated by the caller.
+    * Return value is stored in out_blocks parameter.
     */
-void image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, float *out_blocks);
+void image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, float **out_blocks);
 
 /*
     * Performs DCT on all 8x8 blocks.
@@ -93,19 +93,11 @@ void quantize_block(float *dct_block, int16_t* out_quantized_block);
     * Input: pointer to an array of DCT coefficients for a single block. Coefficients need to be in zigzag order.
     * Input: pointer to an array to store the encoded data.
     * Input: pointer to a BitWriter (bit conitnuity is improtant for JFIF serialization)
-    * Return value is stored in out_encoded_data parameter which should be pre-allocated by the caller.
+    * Return value is stored in bw parameter which should be pre-allocated by the caller.
     * Returns the actual DC coefficient, so it can be used as 'prev_dc' for the next block.
     * Also outputs the size of the encoded data via out_data_size parameter.
     */
-int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, uint8_t* out_encoded_data, BitWriter *bw);
-
-/*
-    * Serializes the encoded data to a file.
-    * Input: filename to write to.
-    * Input: pointer to an array of encoded coefficients.
-    * Input: size of the encoded data.
-    */
-void serialize_to_file(const char *filename, uint8_t *encoded_data, uint32_t data_size);
+int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, BitWriter *bw);
 
 /*
     * Reorders the quantized DCT coefficients in zigzag order.

@@ -1,7 +1,6 @@
 #include "dct.h"
 #include <stdlib.h>
 #include <math.h>
-#include "jpeg_quantization_table.h"
 
 
 void center_around_zero(float* grayscale_values, uint32_t width, uint32_t height) {
@@ -10,23 +9,25 @@ void center_around_zero(float* grayscale_values, uint32_t width, uint32_t height
     }
 }
 
-void image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, float *out_blocks) {
+void image_to_blocks(float *image, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, float **out_blocks) {
     uint32_t blocks_w = (width + 7) / 8;             // ceiling division
     uint32_t blocks_h = (height + 7) / 8;             
     uint32_t total_blocks = blocks_w * blocks_h;
 
+    *out_blocks = (float*)calloc(1, total_blocks * 64 * sizeof(float));
+
     *out_blocks_w = blocks_w;
     *out_blocks_h = blocks_h;
 
-    for(int by = 0; by < blocks_h; by++) {
-        for(int bx = 0; bx < blocks_w; bx++) {
+    for(uint32_t by = 0; by < blocks_h; by++) {
+        for(uint32_t bx = 0; bx < blocks_w; bx++) {
 
-            for(int y = 0; y < 8; y++) {
-                for(int x = 0; x < 8; x++) {
+            for(uint32_t y = 0; y < 8; y++) {
+                for(uint32_t x = 0; x < 8; x++) {
                     uint32_t img_x = bx * 8 + x < width ? bx * 8 + x : width - 1;
                     uint32_t img_y = by * 8 + y < height ? by * 8 + y : height - 1;
                     uint32_t block_index = (by * blocks_w + bx) * 64 + (y * 8 + x);
-                    out_blocks[block_index] = image[img_y * width + img_x];
+                    (*out_blocks)[block_index] = image[img_y * width + img_x];
                 }
             }
         }
@@ -144,8 +145,8 @@ VLI get_vli(int16_t value) {
     return vli;
 }
 
-int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, 
-                            uint8_t* out_encoded_data, BitWriter* bw) {
+int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc
+                            , BitWriter* bw) {
     
     // Predictive DC encoding
     int16_t diff = dct_block[0] - prev_dc;
