@@ -87,12 +87,12 @@ void quantize_block(float *dct_block, const uint8_t *quant_table, int16_t* out_q
     * Encodes the DCT coefficients.
     * Input: pointer to an array of DCT coefficients for a single block. Coefficients need to be in zigzag order.
     * Input: pointer to an array to store the encoded data.
-    * Input: pointer to store the size of the encoded data.
+    * Input: pointer to a BitWriter (bit conitnuity is improtant for JFIF serialization)
     * Return value is stored in out_encoded_data parameter which should be pre-allocated by the caller.
     * Returns the actual DC coefficient, so it can be used as 'prev_dc' for the next block.
     * Also outputs the size of the encoded data via out_data_size parameter.
     */
-int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, uint8_t* out_encoded_data, uint32_t *out_data_size);
+int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, uint8_t* out_encoded_data, BitWriter *bw);
 
 /*
     * Serializes the encoded data to a file.
@@ -109,6 +109,12 @@ void serialize_to_file(const char *filename, uint8_t *encoded_data, uint32_t dat
     * Return value is stored in out_block parameter which should be pre-allocated by the caller.
     */
 void zigzag_order(const int16_t *input_block, int16_t *output_block);
+
+/*
+    * Writes a single byte to the BitWriter.
+    * It ensures byte stuffing is performed so JFIF decoder can distinguish markers from encoded values.
+    */
+void bw_put_byte(BitWriter *bw, uint8_t val);
 
 /*
     * Writes a code to the BitWriter.

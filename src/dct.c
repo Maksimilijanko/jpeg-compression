@@ -108,11 +108,18 @@ void bw_write(BitWriter *bw, uint32_t code, int length) {
         
         // Check if we have filled the current byte. If so, write it to the buffer, reset current byte and bit position.
         if (bw->bit_pos == 8) {
-            bw->buffer[bw->byte_pos++] = bw->current;
+            bw_put_byte(bw, bw->current);           // delegate writing to bw_put_byte so byte stuffing is performed
             bw->current = 0;
             bw->bit_pos = 0;
         }
     }
+}
+
+void bw_put_byte(BitWriter *bw, uint8_t val) {
+    bw->buffer[bw->byte_pos++] = val;
+
+    if(val == 0xFF)
+        bw->buffer[bw->byte_pos++] = 0x00;              // byte stuff so decoder can distinguish markers and payload
 }
 
 VLI get_vli(int16_t value) {
@@ -139,10 +146,7 @@ VLI get_vli(int16_t value) {
 }
 
 int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, 
-                            uint8_t* out_encoded_data, uint32_t *out_data_size) {
-    
-    /* Create BitWriter to write into out_encoded_data */
-    BitWriter bw = { .buffer = out_encoded_data, .byte_pos = 0, .bit_pos = 0, .current = 0 };
+                            uint8_t* out_encoded_data, BitWriter* bw) {
     
     // Predictive DC encoding
     int16_t diff = dct_block[0] - prev_dc;
@@ -194,13 +198,10 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
         // If there are trailing zeros, write EOB (symbol 0x00)
         bw_write(&bw, huff_ac_lum[0x00].code, huff_ac_lum[0x00].len);
     }
-    
-    
-    if (bw.bit_pos > 0) {
-        bw.buffer[bw.byte_pos++] = bw.current;      // Flush out the last byte if it has remaining bits
-    }
-
-    *out_data_size = bw.byte_pos;
+        
+    // if (bw.bit_pos > 0) {
+    //     bw.buffer[bw.byte_pos++] = bw.current;      // Flush out the last byte if it has remaining bits
+    // }
     
     return dct_block[0];                       // Return current DC for next block's prediction       
 }
