@@ -56,11 +56,10 @@ void perform_dct_one_block(float *block, float *out_dct_block) {
 
 }
 
-void quantize_block(float *dct_block, const uint8_t *quant_table, int16_t* out_quantized_block) {
+void quantize_block(float *dct_block, int16_t* out_quantized_block) {
     for(int i = 0; i < 64; i++) {
-        out_quantized_block[i] = (int16_t)roundf(dct_block[i] / quant_table[i]);         // rounding to nearest integer
+        out_quantized_block[i] = (int16_t)roundf(dct_block[i] / std_lum_qt[i]);         // rounding to nearest integer
     }
-
 }
 
 void perform_dct(float *blocks, uint32_t blocks_w, uint32_t blocks_h, float *out_dct_blocks) {
@@ -154,10 +153,10 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
     
     // Huffman DC encoding
     HuffmanCode hc = huff_dc_lum[vli.len];
-    bw_write(&bw, hc.code, hc.len);             // write DC Huffman code into bitstream
+    bw_write(bw, hc.code, hc.len);             // write DC Huffman code into bitstream
     
     if (vli.len > 0) {
-        bw_write(&bw, vli.bits, vli.len);       // write DC VLI bits into bitstream
+        bw_write(bw, vli.bits, vli.len);       // write DC VLI bits into bitstream
     }
 
     int zeros_count = 0;
@@ -173,7 +172,7 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
                 // ZRL (Zero Run Length): 16 continuous zeros
                 // Symbol is 0xF0
                 // We perform Huffman encoding for ZRL
-                bw_write(&bw, huff_ac_lum[0xF0].code, huff_ac_lum[0xF0].len);
+                bw_write(bw, huff_ac_lum[0xF0].code, huff_ac_lum[0xF0].len);
                 zeros_count -= 16;
             }
 
@@ -184,10 +183,10 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
             uint8_t symbol = (zeros_count << 4) | vli.len;
             
             // Get Huffman code for the symbol
-            bw_write(&bw, huff_ac_lum[symbol].code, huff_ac_lum[symbol].len);
+            bw_write(bw, huff_ac_lum[symbol].code, huff_ac_lum[symbol].len);
             
             // Write the actual bits of the value
-            bw_write(&bw, vli.bits, vli.len);
+            bw_write(bw, vli.bits, vli.len);
             
             zeros_count = 0; 
         }
@@ -196,7 +195,7 @@ int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc,
     // EOB handling
     if (zeros_count > 0) {
         // If there are trailing zeros, write EOB (symbol 0x00)
-        bw_write(&bw, huff_ac_lum[0x00].code, huff_ac_lum[0x00].len);
+        bw_write(bw, huff_ac_lum[0x00].code, huff_ac_lum[0x00].len);
     }
         
     // if (bw.bit_pos > 0) {

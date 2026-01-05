@@ -39,6 +39,11 @@ typedef struct {
 extern const HuffmanCode huff_dc_lum[16];   // DC table
 extern const HuffmanCode huff_ac_lum[256];  // AC table
 
+/* 
+* Standard Luminance quantization table.
+*/
+extern const uint8_t std_lum_qt[64];
+
 /*
  * Centers the grayscale values around zero.
  * DCT works with cosine waves oscillating around zero.
@@ -81,7 +86,7 @@ void perform_dct_one_block(float *block, float *out_dct_block);
     * Each coefficient is represented as int16_t, as Baseline JPEG standard requires.
     * Return value is stored in out_quantized_block parameter which should be pre-allocated by the caller.
     */
-void quantize_block(float *dct_block, const uint8_t *quant_table, int16_t* out_quantized_block);
+void quantize_block(float *dct_block, int16_t* out_quantized_block);
 
 /*
     * Encodes the DCT coefficients.
