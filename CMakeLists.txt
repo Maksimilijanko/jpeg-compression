@@ -29,5 +29,5 @@ set_target_properties(jpeg_encoder PROPERTIES
 )
 
 # CMAKE_BINARY_DIR is the build directory and CMAKE_SOURCE_DIR is the source directory
-# CMAKE_BINARY_DIR is defined by CMake automatically, based on where you run the cmake command
+# CMAKE_BINARY_DIR is defined by CMake automatically, based on where the command is run
 # CMAKE_SOURCE_DIR is defined by CMake automatically, based on where the top-level CMakeLists.txt is located
