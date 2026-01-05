@@ -3,6 +3,7 @@
 /*
 * Predefined Huffman tables for luminance DC and AC coefficients.
 * ISO/IEC 10918-1 (JPEG Standard, Annex K.3)
+* https://www.w3.org/Graphics/JPEG/itu-t81.pdf (page 149+)
 */
 
 const HuffmanCode huff_dc_lum[16] = {
