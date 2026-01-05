@@ -16,9 +16,3 @@ float* convert_to_grayscale(RGB* pixels, uint32_t width, uint32_t height) {
 
     return grayscale_values;
 }
-
-void center_around_zero(float* grayscale_values, uint32_t width, uint32_t height) {
-    for (uint32_t i = 0; i < width * height; i++) {
-        grayscale_values[i] -= 128.0f; 
-    }
-}
