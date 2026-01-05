@@ -1,4 +1,4 @@
-# JPEG compression algorithm optimized for DSP execution
+# JPEG compression algorithm implementation in C
 
 A lightweight, dependency-free JPEG encoder implementation written in pure C. 
 This project demonstrates the inner workings of the JPEG compression algorithm, converting BMP images into valid `.jpg` files without using external libraries like `libjpeg` or `stb_image`.
@@ -72,4 +72,9 @@ Run the compiled executable from the command line, providing the input BMP file 
     ├── jfif_handler.c          # JPEG bitstream writer
     ├── main.c                  # Entry point
     └── quantization_table.c    # Standard JPEG quantization table
-    
+```
+
+## 🔮 Future Improvements
+
+* Algorithm optimization for DSP execution
+* Image decompression
