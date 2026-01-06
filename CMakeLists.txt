@@ -1,39 +1,25 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
 
-project(JPEG_Compression LANGUAGES C)
+project(JPEG_Encoder_Suite)
 
-set(CMAKE_C_STANDARD 99)
-set(CMAKE_C_STANDARD_REQUIRED ON)
+# All executable artifacts go to /build/bin
+# This will initialize every target's RUNTIME_OUTPUT_DIRECTORY property
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
 
-# Add debugging flags
-if(MSVC)
-    add_compile_options(/W4)
-else()
-    add_compile_options(-Wall -Wextra -Wpedantic)
-endif()
+# Include natural C implementation
+# This will cause CMake to create natural_c subdirectory inside build directory as well.
+add_subdirectory(natural_c)
 
-# Gather all source files, use pattern matching and recursion (GLOB_RECURSE)
-# Place to variable SOURCES
-file(GLOB_RECURSE SOURCES "src/*.c")
+# Include TI-specific build
+# add_subdirectory(ti)
 
-# Create the executable
-# First argument is the name of the executable
-# Second argument is the list of source files
-add_executable(jpeg_encoder ${SOURCES})
 
-target_compile_options(jpeg_encoder PRIVATE -fsanitize=address -g)
-target_link_options(jpeg_encoder PRIVATE -fsanitize=address)
 
-# Link math library
-target_link_libraries(jpeg_encoder m)
 
-# Configure output directory
-set_target_properties(jpeg_encoder PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-)
 
-# CMAKE_BINARY_DIR is the build directory and CMAKE_SOURCE_DIR is the source directory
-# CMAKE_BINARY_DIR is defined by CMake automatically, based on where the command is run
-# CMAKE_SOURCE_DIR is defined by CMake automatically, based on where the top-level CMakeLists.txt is located
+
+# CMake predifined variables:
+#   - CMAKE_BINARY_DIR is the build directory and CMAKE_SOURCE_DIR is the source directory
+#   - CMAKE_BINARY_DIR is defined by CMake automatically, based on where the command is run
+#   - CMAKE_SOURCE_DIR is defined by CMake automatically, based on where the top-level CMakeLists.txt is located
