@@ -17,6 +17,9 @@ PROJECT_ROOT="$PWD"
 # STEP 1: FIRST-TIME SETUP PSDK
 # ==============================================================================
 
+echo "--------------------------------------------------------"
+echo ">>> STEP 1: First-time TI PSDK setup..."
+
 cd "$TI_SDK_PATH"
 # Run setup
 ./sdk_builder/scripts/setup_psdk_rtos.sh
@@ -27,7 +30,7 @@ cd "$PROJECT_ROOT"
 # STEP 2: PREPARE VISION APPS DIRECTORY (GIT INIT)
 # ==============================================================================
 echo "--------------------------------------------------------"
-echo ">>> STEP 1: Preparing Vision Apps directory..."
+echo ">>> STEP 2: Preparing Vision Apps directory..."
 
 VISION_APPS_DIR="$TI_SDK_PATH/vision_apps"
 

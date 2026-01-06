@@ -6,15 +6,17 @@ TARGET_IP=192.168.1.200
 TARGET_DIR=/lib/firmware/vision_apps_evm
 APPS_TARGET_DIR=/opt/vision_apps
 
+TI_SDK_PATH="$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05"
+
 BINARIES="
-$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/vision_apps/out/J721E/R5F/FREERTOS/release/*.out
-$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/vision_apps/out/J721E/C71/FREERTOS/release/*.out
-$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/vision_apps/out/J721E/C66/FREERTOS/release/*.out
+$TI_SDK_PATH/vision_apps/out/J721E/R5F/FREERTOS/release/*.out
+$TI_SDK_PATH/vision_apps/out/J721E/C71/FREERTOS/release/*.out
+$TI_SDK_PATH/vision_apps/out/J721E/C66/FREERTOS/release/*.out
 "
 
 APPS="
-$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/vision_apps/out/J721E/A72/LINUX/release/app_jpeg_compression.out
-$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/vision_apps/out/J721E/A72/LINUX/release/app_jpeg_compression.out.map"
+$TI_SDK_PATH/vision_apps/out/J721E/A72/LINUX/release/app_jpeg_compression.out
+$TI_SDK_PATH/vision_apps/out/J721E/A72/LINUX/release/app_jpeg_compression.out.map"
 
 # ===== Copy binaries =====
 echo "Copying RTOS binaries to target..."

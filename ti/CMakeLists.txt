@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
 # TI PDSK path
-set(TI_PSDK_PATH $ENV{HOME}/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/sdk_builder)
+set(TI_PSDK_PATH $ENV{HOME}/Desktop/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/sdk_builder)
 
 find_program(MAKE_EXE NAMES make gmake REQUIRED)
 
