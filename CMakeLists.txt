@@ -4,6 +4,7 @@ project(JPEG_Encoder_Suite)
 
 # All executable artifacts go to /build/bin
 # This will initialize every target's RUNTIME_OUTPUT_DIRECTORY property
+# CMAKE_RUNTIME_OUTPUT_DIRECTORY --> RUNTIME_OUTPUT_DIRECTORY property
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 
@@ -12,7 +13,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_subdirectory(natural_c)
 
 # Include TI-specific build
-# add_subdirectory(ti)
+add_subdirectory(ti)
 
 
 
