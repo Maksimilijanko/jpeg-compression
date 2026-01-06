@@ -24,13 +24,18 @@ You need the **TI Processor SDK RTOS (J721e)** version `09_02_00_05`.
 
 ### 2. SDK Configuration (One-Time Setup)
 Before the first build, you must configure the paths and patch the SDK to include this custom application.
+1.  **Export the Project Path:**
+    The TI build system needs to know where this project is located. Run this in your terminal (from ti/ folder):
+    ```bash
+    export JPEG_COMPRESSION_PATH=$(pwd)
+    ```
 
-1.  Open the `setup_psdk.sh` script in a text editor.
-2.  Update the `TI_SDK_PATH` variable to point to your installed SDK location:
+2.  Open the `setup_psdk.sh` script in a text editor.
+3.  Update the `TI_SDK_PATH` variable to point to your installed SDK location:
     ```bash
     TI_SDK_PATH="/path/to/ti-processor-sdk-rtos-j721e-evm-09_02_00_05"
     ```
-3.  Run the setup script:
+4.  Run the setup script:
     ```bash
     chmod +x setup_psdk.sh
     ./setup_psdk.sh
