@@ -1,0 +1,88 @@
+diff --git a/Makefile b/Makefile
+index b1e55de..7b9fc67 100755
+--- a/Makefile
++++ b/Makefile
+@@ -4,6 +4,11 @@ include tools_path.mak
+ # Edit below file to change default build options
+ include build_flags.mak
+ 
++# Define path to JPEG Compression TI folder (fallback)
++JPEG_COMPRESSION_PATH ?= $(abspath $(HOME)/Desktop/jpeg-compression)
++
++export JPEG_COMPRESSION_PATH
++
+ # Project specific build defs (don't change across different combos):
+ BUILD_DEFS :=
+ ifneq ($(APP_CONFIG_BASE_PATH),)
+@@ -13,6 +18,11 @@ endif
+ BUILD_DEFS += $(SOC_DEF)
+ 
+ DIRECTORIES :=
++
++# Add path to your JPEG Compression into DIRECTORIES variable
++DIRECTORIES += $(JPEG_COMPRESSION_PATH)
++DIRECTORIES += $(JPEG_COMPRESSION_PATH)/client
++
+ ifeq ($(SOC),am62a)
+ DIRECTORIES += utils/app_init
+ DIRECTORIES += utils/sciserver
+diff --git a/platform/j721e/rtos/common/app_init.c b/platform/j721e/rtos/common/app_init.c
+index f83584f..426498c 100755
+--- a/platform/j721e/rtos/common/app_init.c
++++ b/platform/j721e/rtos/common/app_init.c
+@@ -151,6 +151,12 @@
+ 
+ #endif /* #if defined(ENABLE_TIOVX) */
+ 
++/*
++* Add include statement to include jpeg compresison header.
++*/
++#ifdef CPU_c7x_1
++#include "jpeg_compression.h"
++#endif
+ 
+ /* PDK header files */
+ #ifdef ENABLE_BOARD
+@@ -542,6 +548,14 @@ int32_t appInit()
+         status = appUdmaInit(&udma_init_prm);
+         APP_ASSERT_SUCCESS(status);
+     }
++    #endif
++
++     /*
++    * Initialize the service.
++    */
++    #ifdef CPU_c7x_1
++    status = JpegCompression_Init();
++    APP_ASSERT_SUCCESS(status);
+     #endif
+ 
+     status = appMemInit(&mem_init_prm);
+diff --git a/platform/j721e/rtos/common/concerto.mak b/platform/j721e/rtos/common/concerto.mak
+index ed73481..4fd494e 100755
+--- a/platform/j721e/rtos/common/concerto.mak
++++ b/platform/j721e/rtos/common/concerto.mak
+@@ -73,6 +73,9 @@ DEFS+=CPU_$(CPU_ID)
+ 
+ IDIRS+=$(VISION_APPS_PATH)/platform/$(SOC)/rtos
+ 
++# Add path to include directory
++IDIRS += $(JPEG_COMPRESSION_PATH)/include
++
+ include $(VISION_APPS_PATH)/platform/$(SOC)/rtos/concerto_c7x_inc.mak
+ 
+ include $(FINALE)
+diff --git a/platform/j721e/rtos/concerto_c7x_inc.mak b/platform/j721e/rtos/concerto_c7x_inc.mak
+index 0963261..756d442 100755
+--- a/platform/j721e/rtos/concerto_c7x_inc.mak
++++ b/platform/j721e/rtos/concerto_c7x_inc.mak
+@@ -37,6 +37,9 @@ STATIC_LIBS += vx_target_kernels_stereo
+ STATIC_LIBS += vx_kernels_common
+ STATIC_LIBS += vx_target_kernels_img_proc_c71
+ 
++# Add your static lib here
++STATIC_LIBS += app_utils_jpeg_compression
++
+ APP_UTILS_LIBS =
+ APP_UTILS_LIBS += app_utils_mem
+ APP_UTILS_LIBS += app_utils_rtos
