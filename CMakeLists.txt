@@ -23,6 +23,12 @@ file(GLOB_RECURSE SOURCES "src/*.c")
 # Second argument is the list of source files
 add_executable(jpeg_encoder ${SOURCES})
 
+target_compile_options(jpeg_encoder PRIVATE -fsanitize=address -g)
+target_link_options(jpeg_encoder PRIVATE -fsanitize=address)
+
+# Link math library
+target_link_libraries(jpeg_encoder m)
+
 # Configure output directory
 set_target_properties(jpeg_encoder PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

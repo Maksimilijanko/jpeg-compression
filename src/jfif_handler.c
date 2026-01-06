@@ -172,5 +172,4 @@ void write_to_jfif(FILE *f, uint8_t *buffer, int length, uint16_t width, uint16_
 
     write_eoi(f);
 
-    fclose(f);
 }
