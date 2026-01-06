@@ -48,10 +48,9 @@ cmake --build .
 This will compile both the Host (PC) tools and the Target (C7x/A72) binaries.
 
 ### 4. Flashing to TDA4VM
-To deploy the compiled binaries to the EVM board (SD Card), use the provided flashing script. Ensure your SD card `boot` partition is mounted.
+To deploy the compiled binaries to the EVM board, use the provided flashing script. Ensure Ethernet connection is established with the board.
 
 ```bash
-# You may need to edit DEST_ROOT in the script to match your SD card mount point
 ./flash_binaries.sh
 ```
 
@@ -63,7 +62,7 @@ Once the board is booted, run the compiled executable from the terminal.
 
 ```bash
 cd /opt/vision_apps
-./vx_app_jpeg_compression.out
+./app_jpeg_compression.out
 ```
 
 *Note: Ensure input files (if any) are placed in the correct directory as expected by the application.*
