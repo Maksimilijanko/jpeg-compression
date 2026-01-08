@@ -12,10 +12,8 @@ TARGET_IP=192.168.1.200
 TARGET_DIR=/lib/firmware/vision_apps_evm
 APPS_TARGET_DIR=/opt/vision_apps
 
-TI_PSDK_PATH="$HOME/Desktop/ti-processor-sdk-rtos-j721e-evm-09_02_00_05"
-
 BINARIES="
-$TIPSDK_PATH/vision_apps/out/J721E/R5F/FREERTOS/release/*.out
+$TI_PSDK_PATH/vision_apps/out/J721E/R5F/FREERTOS/release/*.out
 $TI_PSDK_PATH/vision_apps/out/J721E/C71/FREERTOS/release/*.out
 $TI_PSDK_PATH/vision_apps/out/J721E/C66/FREERTOS/release/*.out
 "
