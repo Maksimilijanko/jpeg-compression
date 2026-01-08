@@ -7,21 +7,23 @@
 #include <utils/console_io/include/app_log.h>
 #include "jpeg_compression.h"
 
-// #include "bmp_handler.h"
+#include "bmp_handler.h"
+#include "color_spaces.h"
 
 int main(int argc, char **argv)
 {
-    // PARAMETERS params = parse_parameters(argc, argv);
+    PARAMETERS params = parse_parameters(argc, argv);
 
-    // BMP_IMAGE image = load_bmp_image(params.inputFile); 
+    BMP_IMAGE image = load_bmp_image(params.inputFile); 
 
-    // // // pixels is dyn. allocated - needs to be freed
-    // // RGB* pixels = read_pixels(image.buffer, image.info.width, image.info.height, image.info.height <= 0);
+    // pixels is dyn. allocated - needs to be freed
+    RGB* pixels = read_pixels(image.buffer, image.info.width, image.info.height, image.info.height <= 0);
 
-    // printf("BMP image imported.\n");
-    // printf("Original size: %u x %u\n", image.info.width, image.info.height);
-    // printf("File size: %u\n", image.header.file_size);
+    printf("BMP image imported.\n");
+    printf("Original size: %u x %u\n", image.info.width, image.info.height);
+    printf("File size: %u\n", image.header.file_size);
 
-    printf("Hello world\n");
+    printf("Zero pixel B component: %f\n", pixels[0].b);
+
     return 0;
 }
