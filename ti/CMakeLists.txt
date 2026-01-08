@@ -5,8 +5,13 @@ project(JPEG_Compression_TI LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+if(NOT DEFINED ENV{TI_PSDK_PATH})
+    message(FATAL_ERROR "Error: Environment variable 'TI_PSDK_PATH' not defined!\n"
+            "Run the following command: export TI_PSDK_PATH=/path/to/your/psdk")
+endif()
+
 # TI PDSK path
-set(TI_PSDK_PATH $ENV{HOME}/Desktop/ti-processor-sdk-rtos-j721e-evm-09_02_00_05/sdk_builder)
+set(TI_PSDK_PATH "$ENV{TI_PSDK_PATH}/sdk_builder")
 
 find_program(MAKE_EXE NAMES make gmake REQUIRED)
 

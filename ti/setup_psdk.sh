@@ -5,7 +5,7 @@
 # ==============================================================================
 # Path to your TI RTOS SDK root directory
 # TODO: Update this path if it matches your specific installation
-TI_SDK_PATH="$HOME/ti-processor-sdk-rtos-j721e-evm-09_02_00_05"
+TI_SDK_PATH="$HOME/Desktop/ti-processor-sdk-rtos-j721e-evm-09_02_00_05"
 
 # Name of the patch file (must be located in the same directory as this script)
 PATCH_FILE="jpeg_compression_ti_psdk.patch"
