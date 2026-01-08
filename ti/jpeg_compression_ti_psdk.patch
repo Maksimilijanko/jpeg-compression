@@ -27,7 +27,7 @@ index b1e55de..5543ac9 100755
  DIRECTORIES += utils/app_init
  DIRECTORIES += utils/sciserver
 diff --git a/platform/j721e/rtos/common/app_init.c b/platform/j721e/rtos/common/app_init.c
-index f83584f..426498c 100755
+index f83584f..7ff2fb2 100755
 --- a/platform/j721e/rtos/common/app_init.c
 +++ b/platform/j721e/rtos/common/app_init.c
 @@ -151,6 +151,12 @@
@@ -43,21 +43,30 @@ index f83584f..426498c 100755
  
  /* PDK header files */
  #ifdef ENABLE_BOARD
-@@ -542,6 +548,14 @@ int32_t appInit()
-         status = appUdmaInit(&udma_init_prm);
-         APP_ASSERT_SUCCESS(status);
+@@ -544,6 +550,7 @@ int32_t appInit()
      }
-+    #endif
+     #endif
+ 
++
+     status = appMemInit(&mem_init_prm);
+     APP_ASSERT_SUCCESS(status);
+ 
+@@ -741,6 +748,15 @@ int32_t appInit()
+     APP_ASSERT_SUCCESS(status);
+     #endif
+ 
 +
 +     /*
-+    * Initialize the service.
++    * Initialize the JPEG compression service.
 +    */
 +    #ifdef CPU_c7x_1
 +    status = JpegCompression_Init();
 +    APP_ASSERT_SUCCESS(status);
-     #endif
++    #endif
++
+     appLogPrintf("APP: Init ... Done !!!\n");
  
-     status = appMemInit(&mem_init_prm);
+     return status;
 diff --git a/platform/j721e/rtos/common/concerto.mak b/platform/j721e/rtos/common/concerto.mak
 index ed73481..5c62ca7 100755
 --- a/platform/j721e/rtos/common/concerto.mak
