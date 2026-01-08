@@ -7,7 +7,7 @@ ifeq ($(TARGET_OS),$(filter $(TARGET_OS), LINUX QNX))
 include $(PRELUDE)
 
 # Source files
-CSOURCES    := main.c
+CSOURCES    := main.c bmp_handler.c
 
 # Name of the output executable (.out)
 TARGET      := app_jpeg_compression
@@ -18,7 +18,10 @@ TARGETTYPE  := exe
 include $(VISION_APPS_PATH)/apps/concerto_mpu_inc.mak
 
 # Include path for shared headers (e.g., message structures defined in your common folder)
-IDIRS       += $(JPEG_COMPRESSION_PATH)/include
+IDIRS       += $(JPEG_COMPRESSION_PATH)/service/include
+
+# Include path for client-specific headers
+IDIRS       += $(JPEG_COMPRESSION_PATH)/client/include
 
 # Uncomment if the Imaging library is needed.
 # (Usually not required for basic IPC demos unless you are accessing sensors directly)

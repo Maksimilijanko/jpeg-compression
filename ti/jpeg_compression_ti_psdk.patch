@@ -1,5 +1,5 @@
 diff --git a/Makefile b/Makefile
-index b1e55de..7b9fc67 100755
+index b1e55de..5543ac9 100755
 --- a/Makefile
 +++ b/Makefile
 @@ -4,6 +4,11 @@ include tools_path.mak
@@ -20,8 +20,8 @@ index b1e55de..7b9fc67 100755
  DIRECTORIES :=
 +
 +# Add path to your JPEG Compression into DIRECTORIES variable
-+DIRECTORIES += $(JPEG_COMPRESSION_PATH)
-+DIRECTORIES += $(JPEG_COMPRESSION_PATH)/client
++DIRECTORIES += $(JPEG_COMPRESSION_PATH)/service
++DIRECTORIES += $(JPEG_COMPRESSION_PATH)/client/src
 +
  ifeq ($(SOC),am62a)
  DIRECTORIES += utils/app_init
@@ -59,7 +59,7 @@ index f83584f..426498c 100755
  
      status = appMemInit(&mem_init_prm);
 diff --git a/platform/j721e/rtos/common/concerto.mak b/platform/j721e/rtos/common/concerto.mak
-index ed73481..4fd494e 100755
+index ed73481..5c62ca7 100755
 --- a/platform/j721e/rtos/common/concerto.mak
 +++ b/platform/j721e/rtos/common/concerto.mak
 @@ -73,6 +73,9 @@ DEFS+=CPU_$(CPU_ID)
@@ -67,7 +67,7 @@ index ed73481..4fd494e 100755
  IDIRS+=$(VISION_APPS_PATH)/platform/$(SOC)/rtos
  
 +# Add path to include directory
-+IDIRS += $(JPEG_COMPRESSION_PATH)/include
++IDIRS += $(JPEG_COMPRESSION_PATH)/service/include
 +
  include $(VISION_APPS_PATH)/platform/$(SOC)/rtos/concerto_c7x_inc.mak
  
