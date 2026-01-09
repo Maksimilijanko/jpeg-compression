@@ -46,7 +46,7 @@ void write_dqt(FILE *f) {
                             // upper 4 bits represent precision (0 = 8-bit)
                             // lower 4 bits represent table ID (0 = Luminance)
 
-    fwrite(std_lum_qt, 1, 64, f);
+    fwrite(std_lum_qt_zigzagged, 1, 64, f);
 }
 
 void write_sof0(FILE *f, uint16_t width, uint16_t height) {

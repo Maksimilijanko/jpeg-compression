@@ -10,6 +10,7 @@
 * Standard Luminance quantization table.
 */
 extern const uint8_t std_lum_qt[64];
+extern const uint8_t std_lum_qt_zigzagged[64];
 
 /*
 * Writes 2 bytes into file.
