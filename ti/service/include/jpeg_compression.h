@@ -55,6 +55,7 @@ typedef struct
     uint64_t phys_addr_intermediate_3;    
     uint64_t phys_addr_dct_buff;
     uint64_t phys_addr_y_out;               // return value
+    uint32_t output_size;
 } JPEG_COMPRESSION_DTO;
 
 
@@ -101,11 +102,11 @@ typedef struct
     int32_t JpegCompression_Init();
 
     // Convert RGB color space to Y
-    void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, uint8_t *y_ptr, int num_pixels);
+    void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int num_pixels);
 
-    void perform_dct_on_block(uint8_t *b_start, float *dct_coeffs);
+    void perform_dct_on_block(int8_t *b_start, float *dct_coeffs);
 
-    void image_to_blocks(uint8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, uint8_t *out_blocks);
+    void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks);
 
     void quantize_block(float *dct_block, int16_t* out_quantized_block);
 
@@ -119,7 +120,7 @@ typedef struct
 
     int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, BitWriter* bw);
 
-    
+
 
 #endif 
 

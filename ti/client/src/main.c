@@ -16,11 +16,12 @@
 #include "jpeg_compression.h"
 #include "bmp_handler.h"
 #include "color_spaces.h"
+#include "jfif_handler.h"
 
 // --------------------------------------------------------------------------------
 // Function Declaration
 // --------------------------------------------------------------------------------
-void send_image_to_c7x(RGB *original_rgb_data, int width, int height);
+void send_image_to_c7x(RGB *original_rgb_data, int width, int height, uint8_t* result, uint32_t* result_size);
 
 // --------------------------------------------------------------------------------
 // Main Function
@@ -52,9 +53,22 @@ int main(int argc, char **argv)
     printf("Original size: %u x %u\n", image.info.width, image.info.height);
     printf("File size: %u\n", image.header.file_size);
 
-    // Dispatch processing to C7x
-    send_image_to_c7x(pixels, image.info.width, image.info.height);
+    uint8_t* buffer = (uint8_t*)calloc(image.info.width *  image.info.height, sizeof(uint8_t));
+    uint32_t result_size;
 
+    // Dispatch processing to C7x
+    send_image_to_c7x(pixels, image.info.width, image.info.height, buffer, &result_size);
+
+    FILE *f_out = fopen(params.outputFile, "wb");
+    if(f_out) {
+        write_to_jfif(f_out, buffer, result_size, image.info.width, image.info.height);
+        fclose(f_out);
+        printf("[A72] JFIF serialization completed.\n");
+    }
+
+    free(buffer);
+    free(pixels);
+    free(image.buffer);
     appDeInit();
     
     return 0;
@@ -63,7 +77,7 @@ int main(int argc, char **argv)
 // --------------------------------------------------------------------------------
 // A72 Logic to communicate with C7x
 // --------------------------------------------------------------------------------
-void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
+void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* result, uint32_t* result_size)
 {
     uint32_t plane_size = width * height;
     uint32_t total_input_size = plane_size * 3;
@@ -73,7 +87,7 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
     // Allocate contiguous memory in DDR
     uint8_t *shared_input_virt = appMemAlloc(APP_MEM_HEAP_DDR, total_input_size, 64);
     uint8_t *shared_output_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
-    uint8_t *shared_intermediate_1_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
+    int8_t *shared_intermediate_1_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
     int16_t *shared_intermediate_2_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(int16_t), 64);    // we make it 2x larger because quantized DCT coeffs are represented with 2B each.
     int16_t *shared_intermediate_3_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(int16_t), 64); 
     float   *shared_intermediate_dct_buff = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(float), 64);
@@ -176,6 +190,10 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
         }
     }
     printf("\n");
+
+    // Copy result to out buffer
+    *result_size = packet.output_size;
+    memcpy(result, shared_output_virt, packet.output_size);
     
     // Free Memory
     appMemFree(APP_MEM_HEAP_DDR, shared_input_virt, total_input_size);

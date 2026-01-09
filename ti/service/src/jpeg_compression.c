@@ -13,7 +13,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     uint8_t *vec_g = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_g);
     uint8_t *vec_b = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_b);
     uint8_t *vec_y = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_y_out);
-    uint8_t *vec_interm_buffer_1 = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_1);
+    int8_t *vec_interm_buffer_1 = (int8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_1);
     int16_t *vec_interm_buffer_2 = (int16_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_2);
     int16_t *vec_interm_buffer_3 = (int16_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_3);
     float   *vec_dct_buff = (float *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_dct_buff);
@@ -36,13 +36,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     // Take Y's from vec_interm_buffer_1 and segmentate it into 8 x 8 blocks, stored in row-major manner in vec_interm_buffer_2
     // vec_interm_buffer_2 is larger ecause it contains int16_t data. We cast it to uint8_t so we can use it in this step and the next one.
-    image_to_blocks(vec_interm_buffer_1, packet->width, packet->height, &blocks_w, &block_h, (uint8_t*)vec_interm_buffer_2);
+    image_to_blocks(vec_interm_buffer_1, packet->width, packet->height, &blocks_w, &block_h, (int8_t*)vec_interm_buffer_2);
 
     // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
     uint32_t total_blocks = block_h * blocks_w;
     uint32_t b = 0;
     for(b = 0; b < total_blocks; b++) {
-        perform_dct_on_block((uint8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
+        perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
     }
 
     for(b = 0; b < total_blocks; b++) {
@@ -53,22 +53,25 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         zigzag_order(vec_interm_buffer_2 + (b * 64), vec_interm_buffer_3 + (b * 64));
     }
 
-    // BitWriter bw;
-    // // write the result into vec_y
-    // bw.buffer = vec_y;
-    // bw.byte_pos = 0;
-    // bw.bit_pos = 0;
-    // bw.current = 0;
+    BitWriter bw;
+    // write the result into vec_y
+    bw.buffer = vec_y;
+    bw.byte_pos = 0;
+    bw.bit_pos = 0;
+    bw.current = 0;
 
-    // int16_t prev_dc = 0;
-    // for(b = 0; b < total_blocks; b++) {
-    //     prev_dc = encode_coefficients(vec_interm_buffer_3 + (b * 64), prev_dc, &bw);
-    // }
+    int16_t prev_dc = 0;
+    for(b = 0; b < total_blocks; b++) {
+        prev_dc = encode_coefficients(vec_interm_buffer_3 + (b * 64), prev_dc, &bw);
+    }
 
-    // // clean out the remaining byte from BW
-    // if (bw.bit_pos > 0) {
-    //     bw_put_byte(&bw, bw.current);
-    // }
+    // clean out the remaining byte from BW
+    if (bw.bit_pos > 0) {
+        bw_put_byte(&bw, bw.current);
+    }
+
+    // Write out output size so A72 can perform serialization
+    packet->output_size = bw.byte_pos;
 
     // CACHE WRITEBACK (After processing)
     // Push data from cache to DDR so A72 can read it. 
@@ -96,7 +99,7 @@ int32_t JpegCompression_Init()
 }
 
 
-void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, uint8_t *y_ptr, int num_pixels)
+void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int num_pixels)
 {
     int32_t num_vectors = num_pixels / 32;
     int32_t i; 
@@ -133,7 +136,7 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, uint8_t *y_ptr, in
 /*
 * Manual calculation of DCT and FP math. This is not ideal, but we will worry about optimization later on... :)
 */
-void perform_dct_on_block(uint8_t *b_start, float *dct_coeffs) {
+void perform_dct_on_block(int8_t *b_start, float *dct_coeffs) {
     int u, v, x, y;
     float sum, cu, cv;
 
@@ -158,7 +161,7 @@ void perform_dct_on_block(uint8_t *b_start, float *dct_coeffs) {
 
 }
 
-void image_to_blocks(uint8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, uint8_t *out_blocks) {
+void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks) {
     // Honor the C89 standard...
     uint32_t blocks_w, blocks_h;
     uint32_t by, bx, y, x;
