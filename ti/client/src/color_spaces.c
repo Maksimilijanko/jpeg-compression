@@ -19,9 +19,9 @@ RGB* read_pixels(uint8_t* pixel_data, uint32_t width, uint32_t height, int orien
             uint32_t bmp_row = orientation ? i : height - 1 - i;
             uint32_t bmp_index = bmp_row * row_stride + j * 3;    // index in BMP data
             
-            pixels[pixel_idx].b = (float)pixel_data[bmp_index];     
-            pixels[pixel_idx].g = (float)pixel_data[bmp_index + 1]; 
-            pixels[pixel_idx].r = (float)pixel_data[bmp_index + 2]; 
+            pixels[pixel_idx].b = pixel_data[bmp_index];     
+            pixels[pixel_idx].g = pixel_data[bmp_index + 1]; 
+            pixels[pixel_idx].r = pixel_data[bmp_index + 2]; 
         }
     }
 
@@ -34,17 +34,17 @@ YCbCr* rgb_to_ycbcr(RGB* pixels, uint32_t width, uint32_t height) {
         return NULL; 
     }
 
-    for (uint32_t i = 0; i < width * height; i++) {
-        float r = pixels[i].r;
-        float g = pixels[i].g;
-        float b = pixels[i].b;
+    // for (uint32_t i = 0; i < width * height; i++) {
+    //     float r = pixels[i].r;
+    //     float g = pixels[i].g;
+    //     float b = pixels[i].b;
 
-        // Conversion formulas from RGB to YCbCr
-        // Using ITU-R BT.601 standard
-        ycbcr_pixels[i].y  =  0.299f * r + 0.587f * g + 0.114f * b;
-        ycbcr_pixels[i].cb = -0.168736f * r - 0.331264f * g + 0.5f * b + 128.0f;
-        ycbcr_pixels[i].cr =  0.5f * r - 0.418688f * g - 0.081312f * b + 128.0f;
-    }
+    //     // Conversion formulas from RGB to YCbCr
+    //     // Using ITU-R BT.601 standard
+    //     // ycbcr_pixels[i].y  =  0.299f * r + 0.587f * g + 0.114f * b;
+    //     // ycbcr_pixels[i].cb = -0.168736f * r - 0.331264f * g + 0.5f * b + 128.0f;
+    //     // ycbcr_pixels[i].cr =  0.5f * r - 0.418688f * g - 0.081312f * b + 128.0f;
+    // }
 
     return ycbcr_pixels;
 }

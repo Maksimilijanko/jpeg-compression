@@ -1,6 +1,5 @@
-$(warning [DEBUG] concerto.mak file in ti/client/concerto.mak is found!)
+$(warning [DEBUG] concerto.mak file in ti/client/src/concerto.mak is found!)
 
-# Ensure this compiles only for the A72 core running Linux (or QNX)
 ifeq ($(TARGET_CPU),$(filter $(TARGET_CPU), A72))
 ifeq ($(TARGET_OS),$(filter $(TARGET_OS), LINUX QNX))
 
@@ -13,20 +12,13 @@ CSOURCES    := main.c bmp_handler.c color_spaces.c
 TARGET      := app_jpeg_compression
 TARGETTYPE  := exe
 
-# KEY STEP: This file includes all standard system libraries
-# (app_init, ipc, utils, OpenVX framework, etc.)
 include $(VISION_APPS_PATH)/apps/concerto_mpu_inc.mak
 
-# Include path for shared headers (e.g., message structures defined in your common folder)
+# Include path for shared headers
 IDIRS       += $(JPEG_COMPRESSION_PATH)/service/include
 
 # Include path for client-specific headers
 IDIRS       += $(JPEG_COMPRESSION_PATH)/client/include
-
-# Uncomment if the Imaging library is needed.
-# (Usually not required for basic IPC demos unless you are accessing sensors directly)
-# STATIC_LIBS += $(IMAGING_LIBS)
-# IDIRS       += $(IMAGING_IDIRS)
 
 include $(FINALE)
 

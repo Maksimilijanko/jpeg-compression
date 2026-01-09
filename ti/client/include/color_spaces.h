@@ -8,15 +8,15 @@
  */
 
 typedef struct {
-    float r;
-    float g;
-    float b;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
 } RGB;
 
 typedef struct {
-    float y;
-    float cb;
-    float cr;
+    uint8_t y;
+    uint8_t cb;
+    uint8_t cr;
 } YCbCr;
 
 /*
