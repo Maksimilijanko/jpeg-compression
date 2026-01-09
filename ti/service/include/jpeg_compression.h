@@ -51,7 +51,8 @@ typedef struct
     uint64_t phys_addr_g;                   // G planar
     uint64_t phys_addr_b;                   // B planar
     uint64_t phys_addr_intermediate_1;      // a buffer to write intermediate results on C7x side (we perform allocation on host/A72 side)
-    uint64_t phys_addr_intermediate_2;    
+    uint64_t phys_addr_intermediate_2;
+    uint64_t phys_addr_intermediate_3;    
     uint64_t phys_addr_dct_buff;
     uint64_t phys_addr_y_out;               // return value
 } JPEG_COMPRESSION_DTO;
@@ -62,6 +63,35 @@ typedef struct
 // ============================================================================
 #ifdef __C7000__
     extern uint8_t std_lum_qt[64];          // quantization table declaration (defined in quantization_table.c)
+
+    typedef struct {
+        uint8_t *buffer;    // Buffer in which we write encoded coefficients
+        uint32_t byte_pos;  // Current byte in the buffer
+        uint32_t bit_pos;   // Current bit position in the current byte (0-7)
+        uint8_t current;    // Current byte being constructed
+    } BitWriter;
+
+    /*
+    *  Structure representing a Huffman code.
+    */
+    typedef struct {
+        uint16_t code;      // Code itself
+        uint8_t len;        // Length of the code in bits
+    } HuffmanCode;
+
+    /*
+    * Structure representing a Variable Length Integer.
+    * Used for encoding non-zero DCT coefficients.
+    */
+    typedef struct {
+        uint16_t bits;      // Bits representing the value
+        uint8_t len;        // Length of the bits
+    } VLI;                  // VLI - Variable Length Integer
+
+
+    /* Huffman tables */
+    extern const HuffmanCode huff_dc_lum[16];   // DC table
+    extern const HuffmanCode huff_ac_lum[256];  // AC table
 
     // Remote service handler
     int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd,
@@ -78,6 +108,18 @@ typedef struct
     void image_to_blocks(uint8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, uint8_t *out_blocks);
 
     void quantize_block(float *dct_block, int16_t* out_quantized_block);
+
+    void zigzag_order(const int16_t *input_block, int16_t *output_block);
+
+    void bw_write(BitWriter *bw, uint32_t code, int length);
+
+    void bw_put_byte(BitWriter *bw, uint8_t val);
+
+    VLI get_vli(int16_t value);
+
+    int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, BitWriter* bw);
+
+    
 
 #endif 
 

@@ -75,6 +75,7 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
     uint8_t *shared_output_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
     uint8_t *shared_intermediate_1_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
     int16_t *shared_intermediate_2_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(int16_t), 64);    // we make it 2x larger because quantized DCT coeffs are represented with 2B each.
+    int16_t *shared_intermediate_3_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(int16_t), 64); 
     float   *shared_intermediate_dct_buff = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(float), 64);
 
     if (!shared_input_virt || !shared_output_virt) {
@@ -112,6 +113,7 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
     packet.phys_addr_y_out = appMemGetVirt2PhyBufPtr((uint64_t)shared_output_virt, APP_MEM_HEAP_DDR);
     packet.phys_addr_intermediate_1 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_1_virt, APP_MEM_HEAP_DDR);
     packet.phys_addr_intermediate_2 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_2_virt, APP_MEM_HEAP_DDR);
+    packet.phys_addr_intermediate_3 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_3_virt, APP_MEM_HEAP_DDR);
     packet.phys_addr_dct_buff = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_dct_buff, APP_MEM_HEAP_DDR);
 
     
@@ -137,11 +139,12 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
     // CACHE INVALIDATE: Pull data from DDR to A72 Cache to see what C7x wrote
     appMemCacheInv(shared_output_virt, plane_size);
     appMemCacheInv(shared_intermediate_1_virt, plane_size);
-    appMemCacheInv(shared_intermediate_2_virt, plane_size);
-    appMemCacheInv(shared_intermediate_dct_buff, plane_size);
+    appMemCacheInv(shared_intermediate_2_virt, plane_size * 2);
+    appMemCacheInv(shared_intermediate_3_virt, plane_size * 2);
+    appMemCacheInv(shared_intermediate_dct_buff, plane_size * 4);
 
     // DEBUG: Print results (First 100 pixels of Y plane)
-    int8_t *y_result = (int8_t*) shared_output_virt;
+    int8_t *y_result = (int8_t*) shared_intermediate_1_virt;
     printf("[A72] Result Y Plane (First 100 pixels):\n");
     for(int i = 0; i < 64; i++) {
         printf("%3d\t", y_result[i]);
@@ -179,5 +182,6 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height)
     appMemFree(APP_MEM_HEAP_DDR, shared_output_virt, plane_size);
     appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_1_virt, plane_size);
     appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_2_virt, plane_size * 2);
+    appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_3_virt, plane_size * 2);
     appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_dct_buff, plane_size * 4);
 }
