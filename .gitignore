@@ -57,3 +57,5 @@ dkms.conf
 .DS_Store
 build/
 temp/
+cycles.txt
+setup_env.sh
