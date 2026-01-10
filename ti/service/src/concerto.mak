@@ -8,6 +8,11 @@ TARGETTYPE  := library
 # Add your source file
 CSOURCES    := jpeg_compression.c quantization_table.c huffman_tables.c
 
+# Enable profiling on PROFILE=yes
+ifeq ($(DEBUG_CYCLE_COUNT),yes)
+    CFLAGS += -DDEBUG_CYCLE_COUNT
+endif
+
 # Include paths for your headers
 IDIRS 		+= $(JPEG_COMPRESSION_PATH)/service/include
 IDIRS       += $(VISION_APPS_PATH)/utils/console_io/include

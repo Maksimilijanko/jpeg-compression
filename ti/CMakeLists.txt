@@ -60,6 +60,7 @@ set(C7X_DEBUG_FLAGS
     --silicon_version=7100 
     -DSOC_J721E 
     -DTARGET_C71
+    -DDEBUG_CYCLE_COUNT                     # the custom flag for enabling code profiling on C7x side
 )
 
 set(C7X_DEBUG_INCLUDES
@@ -80,6 +81,16 @@ endif()
 add_custom_target(trigger_ti_debug_build
     COMMAND ${CMAKE_COMMAND} -E make_directory ${DEBUG_OUT_DIR}
     COMMENT "--- Start C7x Profiling Build: Output in ${DEBUG_OUT_DIR} ---"
+
+    COMMAND ${MAKE_EXE} -C ${TI_PSDK_PATH} 
+            JPEG_COMPRESSION_PATH=${CMAKE_CURRENT_SOURCE_DIR} 
+            SOC=j721e
+            vision_apps
+            DEBUG_CYCLE_COUNT=yes
+    
+    USES_TERMINAL
+    
+    COMMENT ">>> Running external TI PSDK Build..."
 )
 
 foreach(SRC_FILE ${JPEG_DEBUG_SRCS})

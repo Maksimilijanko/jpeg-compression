@@ -25,10 +25,17 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     appMemCacheInv(vec_g, total_pixels);
     appMemCacheInv(vec_b, total_pixels);
 
-        
+    #ifdef DEBUG_CYCLE_COUNT
+        uint64_t start_time, y_time, segmentation_time, dct_time, quantization_time, zig_zag_time, encoding_time;
+        start_time = __TSC;
+    #endif
+
     // Color space transformation: RGB --> Y (vec_y now holds grayscale values)
     // Store Y into vec_interm_buffer_1
     rgb_to_y(vec_r, vec_g, vec_b, vec_interm_buffer_1, total_pixels);
+    #ifdef DEBUG_CYCLE_COUNT
+        y_time = __TSC;
+    #endif
 
     // Calculate number of blocks
     uint32_t blocks_w = 0;
@@ -37,21 +44,33 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Take Y's from vec_interm_buffer_1 and segmentate it into 8 x 8 blocks, stored in row-major manner in vec_interm_buffer_2
     // vec_interm_buffer_2 is larger ecause it contains int16_t data. We cast it to uint8_t so we can use it in this step and the next one.
     image_to_blocks(vec_interm_buffer_1, packet->width, packet->height, &blocks_w, &block_h, (int8_t*)vec_interm_buffer_2);
-
+    #ifdef DEBUG_CYCLE_COUNT
+        segmentation_time = __TSC;
+    #endif
+    
     // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
     uint32_t total_blocks = block_h * blocks_w;
     uint32_t b = 0;
     for(b = 0; b < total_blocks; b++) {
         perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
     }
+    #ifdef DEBUG_CYCLE_COUNT
+        dct_time = __TSC;
+    #endif
 
     for(b = 0; b < total_blocks; b++) {
         quantize_block(vec_dct_buff + (b * 64), vec_interm_buffer_2 + (b * 64));
     }
+    #ifdef DEBUG_CYCLE_COUNT
+        quantization_time = __TSC;
+    #endif
 
     for(b = 0; b < total_blocks; b++) {
         zigzag_order(vec_interm_buffer_2 + (b * 64), vec_interm_buffer_3 + (b * 64));
     }
+    #ifdef DEBUG_CYCLE_COUNT
+        zig_zag_time = __TSC;
+    #endif
 
     BitWriter bw;
     // write the result into vec_y
@@ -72,6 +91,9 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     // Write out output size so A72 can perform serialization
     packet->output_size = bw.byte_pos;
+    #ifdef DEBUG_CYCLE_COUNT
+        encoding_time = __TSC;
+    #endif
 
     // CACHE WRITEBACK (After processing)
     // Push data from cache to DDR so A72 can read it. 
@@ -80,8 +102,41 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     appMemCacheWb(vec_interm_buffer_2, total_pixels * 2);           // the second buffer is bigger
     appMemCacheWb(vec_interm_buffer_3, total_pixels * 2);
     appMemCacheWb(vec_dct_buff, total_pixels * 4);
-    
 
+    // Perform cycle calculation and print
+
+    #ifdef DEBUG_CYCLE_COUNT
+        uint64_t diff_rgb   = y_time - start_time;
+        uint64_t diff_seg   = segmentation_time - y_time;
+        uint64_t diff_dct   = dct_time - segmentation_time;
+        uint64_t diff_quant = quantization_time - dct_time;
+        uint64_t diff_zz    = zig_zag_time - quantization_time;
+        uint64_t diff_enc   = encoding_time - zig_zag_time;
+        uint64_t diff_total = encoding_time - start_time;
+              
+        static char log_buf[2048]; 
+        int offset = 0;
+        
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
+
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "RGB -> Y Conversion", diff_rgb);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "Segmentation (8x8)", diff_seg);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "DCT Transform", diff_dct);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "Quantization", diff_quant);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "ZigZag Reorder", diff_zz);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "Huffman Encoding", diff_enc);
+
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "----------------------------------------------------------------------\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "TOTAL CYCLES", diff_total);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n\n");
+
+        // Single log so racing condition doesn't scatter the lines across output
+        appLogPrintf("%s", log_buf);
+
+    #endif
     return 0;
 }
 
