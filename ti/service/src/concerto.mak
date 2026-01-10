@@ -8,9 +8,9 @@ TARGETTYPE  := library
 # Add your source file
 CSOURCES    := jpeg_compression.c quantization_table.c huffman_tables.c
 
-# Enable profiling on PROFILE=yes
-ifeq ($(DEBUG_CYCLE_COUNT),yes)
-    CFLAGS += -DDEBUG_CYCLE_COUNT
+# For passing through user flags
+ifneq ($(USER_CFLAGS),)
+    CFLAGS += $(USER_CFLAGS)
 endif
 
 # Include paths for your headers
