@@ -4,6 +4,31 @@
 #include <utils/mem/include/app_mem.h>
 #include <math.h>
 
+#ifdef DEBUG_CYCLE_COUNT
+    static void format_commas(uint64_t n, char *out) {
+        char temp[64];
+        sprintf(temp, "%llu", n);
+        
+        int len = strlen(temp);
+        int num_commas = (len - 1) / 3;
+        int new_len = len + num_commas;
+        
+        out[new_len] = '\0'; 
+        
+        int src = len - 1;
+        int dst = new_len - 1;
+        int cnt = 0;
+        
+        while (src >= 0) {
+            out[dst--] = temp[src--];
+            if (++cnt == 3 && src >= 0) {
+                out[dst--] = ','; 
+                cnt = 0;
+            }
+        }
+    }
+#endif
+
 int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, void *prm, uint32_t prm_size, uint32_t flags)
 {
     JPEG_COMPRESSION_DTO* packet = (JPEG_COMPRESSION_DTO*) prm;
@@ -115,6 +140,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         uint64_t diff_total = encoding_time - start_time;
               
         static char log_buf[2048]; 
+        char fmt_buf[64];
         int offset = 0;
         
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "\n");
@@ -122,19 +148,32 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
 
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "RGB -> Y Conversion", diff_rgb);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "Segmentation (8x8)", diff_seg);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "DCT Transform", diff_dct);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "Quantization", diff_quant);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "ZigZag Reorder", diff_zz);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "Huffman Encoding", diff_enc);
+        format_commas(diff_rgb, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "RGB -> Y Conversion", fmt_buf);
+        
+        format_commas(diff_seg, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Segmentation (8x8)", fmt_buf);
+        
+        format_commas(diff_dct, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "DCT Transform", fmt_buf);
+        
+        format_commas(diff_quant, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Quantization", fmt_buf);
+        
+        format_commas(diff_zz, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "ZigZag Reorder", fmt_buf);
+        
+        format_commas(diff_enc, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Huffman Encoding", fmt_buf);
 
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "----------------------------------------------------------------------\n");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32llu |\n", "TOTAL CYCLES", diff_total);
+        
+        format_commas(diff_total, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "TOTAL CYCLES", fmt_buf);
+        
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n\n");
 
-        // Single log so racing condition doesn't scatter the lines across output
-        appLogPrintf("%s", log_buf);
+        appLogPrintf("%s", log_buf);            // single logging, so racing condition between A72 and C7x dont cause it to be scattered
 
     #endif
     return 0;
