@@ -10,8 +10,21 @@ if(NOT DEFINED ENV{TI_PSDK_PATH})
             "Run the following command: export TI_PSDK_PATH=/path/to/your/psdk")
 endif()
 
-# TI PDSK path
+if(NOT DEFINED ENV{CGT7X_ROOT})
+    message(FATAL_ERROR "Error: Environment variable 'CGT7X_ROOT' not defined!\n"
+            "Run the following command: export CGT7X_ROOT=/path/to/your/cgt7x/root")
+endif()
+
+
+# -----------------------------------------------------------------------------
+# MAIN BUILD TARGET
+# -----------------------------------------------------------------------------
+
+# TI PDSK path (sdk_builder)
 set(TI_PSDK_PATH "$ENV{TI_PSDK_PATH}/sdk_builder")
+
+# Root PSDK path
+set(ROOT_SDK_ROOT "$ENV{TI_PSDK_PATH}")
 
 find_program(MAKE_EXE NAMES make gmake REQUIRED)
 
@@ -27,12 +40,63 @@ add_custom_target(trigger_ti_build
     COMMENT ">>> Running external TI PSDK Build..."
 )
 
-# # 4. (OPCIONO) Ako imaš lokalne stvari koje se moraju desiti PRIJE TI builda
-# # Recimo da ovdje lokalno generišeš neki header ili biblioteku
-# add_custom_target(moje_lokalne_pripreme
-#     COMMAND echo "Radim lokalnu pripremu..."
-#     # COMMAND python3 scripts/generate_config.py
-# )
+# -----------------------------------------------------------------------------
+# DEBUG BUILD (Profiling + Assembly Analysis)
+# -----------------------------------------------------------------------------
 
-# # 5. Uvezivanje: Kažemo da TI build zavisi od lokalne pripreme
-# add_dependencies(trigger_ti_build moje_lokalne_pripreme)
+set(CGT7X_ROOT      "$ENV{CGT7X_ROOT}")
+set(VISION_APPS     "${ROOT_SDK_ROOT}/vision_apps")
+set(TIOVX_PATH      "${ROOT_SDK_ROOT}/tiovx")
+set(APP_UTILS_PATH  "${ROOT_SDK_ROOT}/app_utils")
+set(CL7X_COMPILER   "${CGT7X_ROOT}/bin/cl7x")
+
+set(DEBUG_OUT_DIR   "${CMAKE_CURRENT_BINARY_DIR}/ti_debug_analysis")
+
+set(C7X_DEBUG_FLAGS 
+    -o3 
+    --gen_opt_info=2 
+    -k 
+    --src_interlist 
+    --silicon_version=7100 
+    -DSOC_J721E 
+    -DTARGET_C71
+)
+
+set(C7X_DEBUG_INCLUDES
+    -I "${CGT7X_ROOT}/include"
+    -I "${APP_UTILS_PATH}"
+    -I "${VISION_APPS}"
+    -I "${TIOVX_PATH}/include"
+    -I "${TIOVX_PATH}/kernels/include"
+    -I "${CMAKE_CURRENT_SOURCE_DIR}/service/include"                    # Service include dir
+)
+
+file(GLOB JPEG_DEBUG_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/service/src/*.c")
+
+if(NOT JPEG_DEBUG_SRCS)
+    message(WARNING "Debug Target: .c files not found in ${CMAKE_CURRENT_SOURCE_DIR}/service/src/")
+endif()
+
+add_custom_target(trigger_ti_debug_build
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${DEBUG_OUT_DIR}
+    COMMENT "--- Start C7x Profiling Build: Output in ${DEBUG_OUT_DIR} ---"
+)
+
+foreach(SRC_FILE ${JPEG_DEBUG_SRCS})
+    get_filename_component(F_NAME ${SRC_FILE} NAME)
+    
+    add_custom_command(TARGET trigger_ti_debug_build
+        POST_BUILD
+        COMMAND ${CL7X_COMPILER} ${C7X_DEBUG_FLAGS} ${C7X_DEBUG_INCLUDES}
+                -fr="${DEBUG_OUT_DIR}" 
+                -fs="${DEBUG_OUT_DIR}" 
+                "${SRC_FILE}"
+        COMMENT "Analysing: ${F_NAME} -> .asm generated"
+        WORKING_DIRECTORY ${DEBUG_OUT_DIR}
+    )
+endforeach()
+
+add_custom_command(TARGET trigger_ti_debug_build
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "--- C7x Analysis Complete. Check .asm files in ${DEBUG_OUT_DIR} ---"
+)
