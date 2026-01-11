@@ -245,7 +245,7 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
 /*
 * Manual calculation of DCT and FP math. This is not ideal, but we will worry about optimization later on... :)
 */
-void perform_dct_on_block(int8_t *b_start, float *dct_coeffs) {
+void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs) {
     int u, v, k;
     float __attribute__((aligned(64))) intermediate[64];
 
