@@ -29,9 +29,9 @@
     }
 
     // global vars for calcuating dct performance
-    uint64_t cos_cycles;
-    uint64_t alpha_cycles;
-    uint64_t dct_calc_cycles;
+    uint64_t timer1;
+    uint64_t timer2;
+    uint64_t timer3;
     uint64_t start;
 #endif
 
@@ -166,14 +166,11 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         format_commas(diff_dct, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "DCT Transform (Total)", fmt_buf);
 
-        format_commas(cos_cycles, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Cos calc & mul", fmt_buf);
+        format_commas(timer1 - start, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> First matmul (C x f)", fmt_buf);
         
-        format_commas(alpha_cycles, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Alpha calculation", fmt_buf);
-        
-        format_commas(dct_calc_cycles, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> DCT coeff calculation", fmt_buf);
+        format_commas(timer2 - timer1, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Second matmul ((C x f) x C^T)", fmt_buf);
         
         format_commas(diff_quant, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Quantization", fmt_buf);
@@ -249,49 +246,38 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
 * Manual calculation of DCT and FP math. This is not ideal, but we will worry about optimization later on... :)
 */
 void perform_dct_on_block(int8_t *b_start, float *dct_coeffs) {
-    int u, v, x, y;
-    float sum, cu, cv;
+    int u, v, k;
+    float intermediate[64] __attribute__((aligned(64)));
 
-    for(u = 0; u < 8; u++) {
+    #ifdef DEBUG_CYCLE_COUNT
+        start = __TSC;
+    #endif
+
+    float sum = 0.0f;
+    for(u = 0; u < 8; u++) 
         for(v = 0; v < 8; v++) {
-            
-            
             sum = 0.0f;
-            for(x = 0; x < 8; x++) {
-                for(y = 0; y < 8; y++) {
-                    #ifdef DEBUG_CYCLE_COUNT
-                        start = __TSC;
-                    #endif
-                    sum += b_start[y * 8 + x] * 
-                           cosf(((2 * x + 1) * u * PI_VAL) / 16.0f) * 
-                           cosf(((2 * y + 1) * v * PI_VAL) / 16.0f);
-                    #ifdef DEBUG_CYCLE_COUNT
-                        // this gives us cycles needed to calculate pixel x cos x cos product. 
-                        cos_cycles = __TSC - start;
-                    #endif
-                }
-            }
-
-            #ifdef DEBUG_CYCLE_COUNT
-                start = __TSC;
-            #endif
-            cu = (u == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
-            cv = (v == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
-            #ifdef DEBUG_CYCLE_COUNT
-                // this gives us cycles needed to calculate alpha factors in each run
-                alpha_cycles = __TSC - start;
-            #endif
-
-            #ifdef DEBUG_CYCLE_COUNT
-                start = __TSC;
-            #endif
-            dct_coeffs[v * 8 + u] = 0.25f * cu * cv * sum;
-            #ifdef DEBUG_CYCLE_COUNT
-                // this gives us the time needed to calculate the final result - DCT coeff
-                dct_calc_cycles = __TSC - start;
-            #endif
+            for(k = 0; k < 8; k++) 
+                sum += dct_matrix_c[u * 8 + k] * b_start[k * 8 + v];
+            intermediate[u * 8 + v] = sum;
         }
-    }
+
+    #ifdef DEBUG_CYCLE_COUNT
+        timer1 = __TSC;
+    #endif
+    
+
+    for(u = 0; u < 8; u++)
+        for(v = 0; v < 8; v++) {
+            sum = 0.0f;
+            for(k = 0; k < 8; k++)
+                sum += intermediate[u * 8 + k] * dct_matrix_c_T[k * 8 + v];
+            dct_coeffs[u * 8 + v] = sum;
+        }
+
+    #ifdef DEBUG_CYCLE_COUNT
+        timer2 = __TSC;
+    #endif
 
 }
 

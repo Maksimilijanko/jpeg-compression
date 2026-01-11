@@ -6,7 +6,7 @@ TARGET      := app_utils_jpeg_compression
 TARGETTYPE  := library
 
 # Add your source file
-CSOURCES    := jpeg_compression.c quantization_table.c huffman_tables.c
+CSOURCES    := jpeg_compression.c quantization_table.c huffman_tables.c dct_matrix.c
 
 # For passing through user flags
 ifneq ($(USER_CFLAGS),)
