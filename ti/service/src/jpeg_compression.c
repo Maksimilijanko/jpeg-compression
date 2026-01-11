@@ -242,13 +242,10 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
     }
 }
 
-/*
-* Manual calculation of DCT and FP math. This is not ideal, but we will worry about optimization later on... :)
-*/
 void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs) {
-    int u, v, k;
-    float __attribute__((aligned(64))) intermediate[64];
-
+    int i, k;
+    float8 intermediate_regs[8];
+ 
     ASSERT_ALIGNED_64(dct_matrix_c);
     ASSERT_ALIGNED_64(dct_matrix_c_T);
 
@@ -256,19 +253,24 @@ void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs
         start = __TSC;
     #endif
 
-    float sum = 0.0f;
     #pragma MUST_ITERATE(8, 8, 8)
-    for(u = 0; u < 8; u++) 
-        #pragma MUST_ITERATE(8, 8, 8)
-        for(v = 0; v < 8; v++) {
-            sum = 0.0f;
-            #pragma MUST_ITERATE(8, 8, 8)
-            #pragma UNROLL(8)
-            for(k = 0; k < 8; k++) 
-                sum += dct_matrix_c[u * 8 + k] * b_start[v * 8 + k];                // we are multiplying C x f^T and storing it into intermediate
-                                                                                    // this way we are using row-major on both matrices
-            intermediate[u * 8 + v] = sum;
+    for(i = 0; i < 8; i++) {
+        char8 in_char = *((char8 *)&b_start[i * 8]);
+        float8 in_vec = __convert_float8(in_char);
+
+        float8 row_acc = (float8)0.0f;
+
+        #pragma UNROLL(8) 
+        for(k = 0; k < 8; k++) {
+            float pixel_val = in_vec.s[k]; 
+            
+            float8 c_row = *((float8 *)&dct_matrix_c_T[k * 8]);
+            
+            row_acc += c_row * pixel_val;
         }
+
+        intermediate_regs[i] = row_acc;
+    }
 
     #ifdef DEBUG_CYCLE_COUNT
         timer1 = __TSC;
@@ -276,19 +278,22 @@ void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs
     
 
     #pragma MUST_ITERATE(8, 8, 8)
-    for(u = 0; u < 8; u++)
-        #pragma MUST_ITERATE(8, 8, 8)
-        for(v = 0; v < 8; v++) {
-            sum = 0.0f;
-            #pragma MUST_ITERATE(8, 8, 8)
-            #pragma UNROLL(8)
-            for(k = 0; k < 8; k++)
-                sum += dct_matrix_c[u * 8 + k] * intermediate[v * 8 + k];           // now we are multiplying C x (intermediate)^T
-                                                                                    // (intermediate)^T = (C x f^T)^T
-                                                                                    // = f^T^T x C^T = f x C^T
-                                                                                    // so C x (intermediate)^T = C x f x C^T
-            dct_coeffs[u * 8 + v] = sum;
+    for(i = 0; i < 8; i++) {
+        float8 c_factors = *((float8 *)&dct_matrix_c[i * 8]);
+        
+        float8 row_acc = (float8)0.0f;
+
+        #pragma UNROLL(8)
+        for(k = 0; k < 8; k++) {
+            float c_val = c_factors.s[k];
+            
+            float8 m_row = intermediate_regs[k];
+            
+            row_acc += m_row * c_val;
         }
+
+        *((float8 *)&dct_coeffs[i * 8]) = row_acc;
+    }
 
     #ifdef DEBUG_CYCLE_COUNT
         timer2 = __TSC;
