@@ -31,7 +31,7 @@ def generate_dct_matrices(filename):
 
             # Standard Matrix C
             f.write("// DCT Matrix C (row-major)\n")
-            f.write("const float dct_matrix_c[64] __attribute__((aligned(64))) = {\n")
+            f.write("const float __attribute__((aligned(64))) dct_matrix_c[64] = {\n")
             for row in C:
                 f.write("    ")
                 for val in row:
@@ -41,7 +41,7 @@ def generate_dct_matrices(filename):
 
             # Transposed Matrix C^T
             f.write("// Transposed DCT Matrix C^T (row-major)\n")
-            f.write("const float dct_matrix_c_T[64] __attribute__((aligned(64))) = {\n")
+            f.write("const float __attribute__((aligned(64))) dct_matrix_c_T[64] = {\n")
             for row in C_T:
                 f.write("    ")
                 for val in row:

@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 // DCT Matrix C (row-major)
-const float dct_matrix_c[64] __attribute__((aligned(256))) = {
+const float __attribute__((aligned(64))) dct_matrix_c[64] = {
      0.3535534f,  0.3535534f,  0.3535534f,  0.3535534f,  0.3535534f,  0.3535534f,  0.3535534f,  0.3535534f, 
      0.4903926f,  0.4157348f,  0.2777851f,  0.0975452f, -0.0975452f, -0.2777851f, -0.4157348f, -0.4903926f, 
      0.4619398f,  0.1913417f, -0.1913417f, -0.4619398f, -0.4619398f, -0.1913417f,  0.1913417f,  0.4619398f, 
@@ -15,7 +15,7 @@ const float dct_matrix_c[64] __attribute__((aligned(256))) = {
 };
 
 // Transposed DCT Matrix C^T (row-major)
-const float dct_matrix_c_T[64] __attribute__((aligned(256))) = {
+const float __attribute__((aligned(64))) dct_matrix_c_T[64] = {
      0.3535534f,  0.4903926f,  0.4619398f,  0.4157348f,  0.3535534f,  0.2777851f,  0.1913417f,  0.0975452f, 
      0.3535534f,  0.4157348f,  0.1913417f, -0.0975452f, -0.3535534f, -0.4903926f, -0.4619398f, -0.2777851f, 
      0.3535534f,  0.2777851f, -0.1913417f, -0.4903926f, -0.3535534f,  0.0975452f,  0.4619398f,  0.4157348f, 

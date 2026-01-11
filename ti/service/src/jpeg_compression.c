@@ -247,7 +247,10 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
 */
 void perform_dct_on_block(int8_t *b_start, float *dct_coeffs) {
     int u, v, k;
-    float intermediate[64] __attribute__((aligned(64)));
+    float __attribute__((aligned(64))) intermediate[64];
+
+    ASSERT_ALIGNED_64(dct_matrix_c);
+    ASSERT_ALIGNED_64(dct_matrix_c_T);
 
     #ifdef DEBUG_CYCLE_COUNT
         start = __TSC;
