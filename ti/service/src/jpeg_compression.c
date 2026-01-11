@@ -257,9 +257,13 @@ void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs
     #endif
 
     float sum = 0.0f;
+    #pragma MUST_ITERATE(8, 8, 8)
     for(u = 0; u < 8; u++) 
+        #pragma MUST_ITERATE(8, 8, 8)
         for(v = 0; v < 8; v++) {
             sum = 0.0f;
+            #pragma MUST_ITERATE(8, 8, 8)
+            #pragma UNROLL(8)
             for(k = 0; k < 8; k++) 
                 sum += dct_matrix_c[u * 8 + k] * b_start[v * 8 + k];                // we are multiplying C x f^T and storing it into intermediate
                                                                                     // this way we are using row-major on both matrices
@@ -271,9 +275,13 @@ void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs
     #endif
     
 
+    #pragma MUST_ITERATE(8, 8, 8)
     for(u = 0; u < 8; u++)
+        #pragma MUST_ITERATE(8, 8, 8)
         for(v = 0; v < 8; v++) {
             sum = 0.0f;
+            #pragma MUST_ITERATE(8, 8, 8)
+            #pragma UNROLL(8)
             for(k = 0; k < 8; k++)
                 sum += dct_matrix_c[u * 8 + k] * intermediate[v * 8 + k];           // now we are multiplying C x (intermediate)^T
                                                                                     // (intermediate)^T = (C x f^T)^T
