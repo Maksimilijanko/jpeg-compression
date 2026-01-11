@@ -27,6 +27,12 @@
             }
         }
     }
+
+    // global vars for calcuating dct performance
+    uint64_t cos_cycles;
+    uint64_t alpha_cycles;
+    uint64_t dct_calc_cycles;
+    uint64_t start;
 #endif
 
 int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, void *prm, uint32_t prm_size, uint32_t flags)
@@ -143,37 +149,49 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         char fmt_buf[64];
         int offset = 0;
         
+        const char* separator = "=======================================================================\n";
+        const char* divider   = "-----------------------------------------------------------------------\n";
+
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "\n");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", separator);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", separator);
 
         format_commas(diff_rgb, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "RGB -> Y Conversion", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "RGB -> Y Conversion", fmt_buf);
         
         format_commas(diff_seg, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Segmentation (8x8)", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Segmentation (8x8)", fmt_buf);
         
         format_commas(diff_dct, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "DCT Transform", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "DCT Transform (Total)", fmt_buf);
+
+        format_commas(cos_cycles, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Cos calc & mul", fmt_buf);
+        
+        format_commas(alpha_cycles, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Alpha calculation", fmt_buf);
+        
+        format_commas(dct_calc_cycles, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> DCT coeff calculation", fmt_buf);
         
         format_commas(diff_quant, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Quantization", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Quantization", fmt_buf);
         
         format_commas(diff_zz, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "ZigZag Reorder", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "ZigZag Reorder", fmt_buf);
         
         format_commas(diff_enc, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Huffman Encoding", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Huffman Encoding", fmt_buf);
 
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "----------------------------------------------------------------------\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", divider);
         
         format_commas(diff_total, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "TOTAL CYCLES", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "TOTAL CYCLES", fmt_buf);
         
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s\n", separator);
 
-        appLogPrintf("%s", log_buf);            // single logging, so racing condition between A72 and C7x dont cause it to be scattered
+        appLogPrintf("%s", log_buf);
 
     #endif
     return 0;
@@ -237,19 +255,41 @@ void perform_dct_on_block(int8_t *b_start, float *dct_coeffs) {
     for(u = 0; u < 8; u++) {
         for(v = 0; v < 8; v++) {
             
+            
             sum = 0.0f;
             for(x = 0; x < 8; x++) {
                 for(y = 0; y < 8; y++) {
+                    #ifdef DEBUG_CYCLE_COUNT
+                        start = __TSC;
+                    #endif
                     sum += b_start[y * 8 + x] * 
                            cosf(((2 * x + 1) * u * PI_VAL) / 16.0f) * 
                            cosf(((2 * y + 1) * v * PI_VAL) / 16.0f);
+                    #ifdef DEBUG_CYCLE_COUNT
+                        // this gives us cycles needed to calculate pixel x cos x cos product. 
+                        cos_cycles = __TSC - start;
+                    #endif
                 }
             }
 
+            #ifdef DEBUG_CYCLE_COUNT
+                start = __TSC;
+            #endif
             cu = (u == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
             cv = (v == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
+            #ifdef DEBUG_CYCLE_COUNT
+                // this gives us cycles needed to calculate alpha factors in each run
+                alpha_cycles = __TSC - start;
+            #endif
 
+            #ifdef DEBUG_CYCLE_COUNT
+                start = __TSC;
+            #endif
             dct_coeffs[v * 8 + u] = 0.25f * cu * cv * sum;
+            #ifdef DEBUG_CYCLE_COUNT
+                // this gives us the time needed to calculate the final result - DCT coeff
+                dct_calc_cycles = __TSC - start;
+            #endif
         }
     }
 
