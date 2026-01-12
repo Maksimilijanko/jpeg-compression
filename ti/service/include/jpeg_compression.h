@@ -58,6 +58,13 @@ typedef struct
     uint32_t output_size;
 } JPEG_COMPRESSION_DTO;
 
+#ifdef DEBUG_CYCLE_COUNT
+    extern uint64_t timer1;
+    extern uint64_t timer2;
+    extern uint64_t timer3;
+    extern uint64_t start;
+#endif
+
 
 // ============================================================================
 // C7x specific functions
