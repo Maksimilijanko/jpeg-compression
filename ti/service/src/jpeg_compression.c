@@ -82,9 +82,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
     uint32_t total_blocks = block_h * blocks_w;
     uint32_t b = 0;
-    for(b = 0; b < total_blocks; b++) {
-        perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
-    }
+    // for(b = 0; b < total_blocks; b++) {
+    //     perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
+    // }
+    perform_dct_on_image((int8_t*)vec_interm_buffer_2, vec_dct_buff, total_blocks);
     #ifdef DEBUG_CYCLE_COUNT
         dct_time = __TSC;
     #endif
@@ -166,11 +167,11 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         format_commas(diff_dct, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "DCT Transform (Total)", fmt_buf);
 
-        format_commas(timer1 - start, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> First matmul (C x f)", fmt_buf);
+        // format_commas(timer1 - start, fmt_buf);
+        // offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> First matmul (C x f)", fmt_buf);
         
-        format_commas(timer2 - timer1, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Second matmul ((C x f) x C^T)", fmt_buf);
+        // format_commas(timer2 - timer1, fmt_buf);
+        // offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Second matmul ((C x f) x C^T)", fmt_buf);
         
         format_commas(diff_quant, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Quantization", fmt_buf);

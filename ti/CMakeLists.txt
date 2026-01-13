@@ -70,7 +70,10 @@ set(C7X_DEBUG_INCLUDES
     -I "${CMAKE_CURRENT_SOURCE_DIR}/service/include"                    # Service include dir
 )
 
-file(GLOB JPEG_DEBUG_SRCS "${CMAKE_CURRENT_SOURCE_DIR}/service/src/*.c")
+file(GLOB JPEG_DEBUG_SRCS 
+    "${CMAKE_CURRENT_SOURCE_DIR}/service/src/*.c"
+    "${CMAKE_CURRENT_SOURCE_DIR}/service/src/*.cpp"
+)
 
 if(NOT JPEG_DEBUG_SRCS)
     message(WARNING "Debug Target: .c files not found in ${CMAKE_CURRENT_SOURCE_DIR}/service/src/")

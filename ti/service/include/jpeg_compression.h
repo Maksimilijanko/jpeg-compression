@@ -119,6 +119,19 @@ typedef struct
 
     void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs);
 
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+    
+    // DCT using SE and SA
+    void perform_dct_on_image(int8_t * restrict input_buffer, 
+                            float * restrict output_buffer, 
+                            int num_blocks);
+
+    #ifdef __cplusplus
+    }
+    #endif
+
     void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks);
 
     void quantize_block(float *dct_block, int16_t* out_quantized_block);
