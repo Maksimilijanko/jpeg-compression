@@ -52,13 +52,13 @@ extern "C" void perform_dct_on_image(int8_t * __restrict__ input_buffer,
 
     // --- Streaming Address Generator setup ---
     __SA_TEMPLATE_v1 sa_tmplt = __gen_SA_TEMPLATE_v1();
-    sa_tmplt.VECLEN  = __SA_VECLEN_8ELEMS;                      // 8 element vector length
-    sa_tmplt.DIMFMT  = __SA_DIMFMT_3D;                          // 3D structure
-    sa_tmplt.ICNT0   = 8;                                       
-    sa_tmplt.ICNT1   = 8;
-    sa_tmplt.ICNT2   = num_blocks;
-    sa_tmplt.DIM1    = 8; 
-    sa_tmplt.DIM2    = 64; 
+    sa_tmplt.VECLEN = sa_veclen<float8>::value; 
+    sa_tmplt.DIMFMT = __SA_DIMFMT_3D;
+    sa_tmplt.ICNT0  = 8;
+    sa_tmplt.ICNT1  = 8;
+    sa_tmplt.ICNT2  = num_blocks;
+    se_tmplt.DIM1   = 8;
+    se_tmplt.DIM2   = 64;
     
     __SA0_OPEN(sa_tmplt);
     float8 * out_stream = (float8 *)output_buffer;
