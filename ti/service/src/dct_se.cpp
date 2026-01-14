@@ -40,25 +40,21 @@ extern "C" void perform_dct_on_image(int8_t * __restrict__ input_buffer,
     __SE_TEMPLATE_v1 se_tmplt = __gen_SE_TEMPLATE_v1();
     se_tmplt.ELETYPE = __SE_ELETYPE_8BIT;                       // element type is 8bit long
     se_tmplt.VECLEN  = __SE_VECLEN_8ELEMS;                      // vector length is 8 elements (one row)
-    se_tmplt.DIMFMT  = __SE_DIMFMT_3D;                          // The structure is 3D
-    se_tmplt.ICNT0   = 8;                                       // Row width
-    se_tmplt.ICNT1   = 8;                                       // Column heigh
-    se_tmplt.ICNT2   = num_blocks;                              // How many blocks
-    se_tmplt.DIM1    = 8;                                       // 
-    se_tmplt.DIM2    = 64;                                      // stride
+    se_tmplt.DIMFMT  = __SE_DIMFMT_2D;                          // The structure is 3D
+    se_tmplt.ICNT0   = 64;                                       // Row width (in uints, not V types...)
+    se_tmplt.ICNT1   = num_blocks * 64;                         // How many uints in total (not byte level, but DATA level (how many floats, chars, etc.))
+    se_tmplt.DIM1    = 64;                                      // stride
     se_tmplt.PROMOTE = __SE_PROMOTE_OFF;                        // 
     
     __SE0_OPEN(input_buffer, se_tmplt);                         // Open the SE0 streaming engine interface
 
     // --- Streaming Address Generator setup ---
     __SA_TEMPLATE_v1 sa_tmplt = __gen_SA_TEMPLATE_v1();
-    sa_tmplt.VECLEN = sa_veclen<float8>::value; 
-    sa_tmplt.DIMFMT = __SA_DIMFMT_3D;
-    sa_tmplt.ICNT0  = 8;
-    sa_tmplt.ICNT1  = 8;
-    sa_tmplt.ICNT2  = num_blocks;
-    se_tmplt.DIM1   = 8;
-    se_tmplt.DIM2   = 64;
+    sa_tmplt.VECLEN  = __SA_VECLEN_8ELEMS;                      // 8 element vector length
+    sa_tmplt.DIMFMT  = __SA_DIMFMT_2D;                          // 3D structure
+    sa_tmplt.ICNT0   = 64;                                       // first dimension size IN FLOATS (not V Types, the SA unit will divide itself...)
+    sa_tmplt.ICNT1   = num_blocks * 64;                         // how many floats in total (same as before with the SE...)
+    sa_tmplt.DIM1    = 64;
     
     __SA0_OPEN(sa_tmplt);
     float8 * out_stream = (float8 *)output_buffer;
@@ -101,6 +97,7 @@ extern "C" void perform_dct_on_image(int8_t * __restrict__ input_buffer,
             final_acc += rows[6] * c_vec.s[6];
             final_acc += rows[7] * c_vec.s[7];
 
+            // *(out_stream + b*8 + i) = final_acc;                     // DEBUG 
             *strm_agen<0, float8>::get_adv(out_stream) = final_acc;
         }
 
