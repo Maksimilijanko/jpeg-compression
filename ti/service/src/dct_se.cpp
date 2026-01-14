@@ -78,15 +78,6 @@ extern "C" void perform_dct_on_image(int8_t * __restrict__ input_buffer,
                 acc += trans[j] * input_row.s[j];
             }
 
-            
-            // acc += trans[0] * input_rows[i].s[0];
-            // acc += trans[1] * input_rows[i].s[1];
-            // acc += trans[2] * input_rows[i].s[2];
-            // acc += trans[3] * input_rows[i].s[3];
-            // acc += trans[4] * input_rows[i].s[4];
-            // acc += trans[5] * input_rows[i].s[5];
-            // acc += trans[6] * input_rows[i].s[6];
-            // acc += trans[7] * input_rows[i].s[7];
 
             dct_rows[i] = acc;
         }
@@ -103,34 +94,8 @@ extern "C" void perform_dct_on_image(int8_t * __restrict__ input_buffer,
             for(int j = 0; j < 8; j++) {
                 final_acc += dct_rows[j] * c_vec.s[j];
             }
-            // final_acc += dct_rows[0] * c_vec.s[0];
-            // final_acc += dct_rows[1] * c_vec.s[1];
-            // final_acc += dct_rows[2] * c_vec.s[2];
-            // final_acc += dct_rows[3] * c_vec.s[3];
-            // final_acc += dct_rows[4] * c_vec.s[4];
-            // final_acc += dct_rows[5] * c_vec.s[5];
-            // final_acc += dct_rows[6] * c_vec.s[6];
-            // final_acc += dct_rows[7] * c_vec.s[7];
-
-            // // Grupa 1 (Parni) - Nadamo se da ce ovo kompajler staviti na jednu stranu
-            // float8 p0 = dct_rows[0] * c_vec.s[0];
-            // float8 p2 = dct_rows[2] * c_vec.s[2];
-            // float8 p4 = dct_rows[4] * c_vec.s[4];
-            // float8 p6 = dct_rows[6] * c_vec.s[6];
-            // float8 sum_even = (p0 + p2) + (p4 + p6);
-
-            // // Grupa 2 (Neparni) - Nadamo se da ce ovo staviti na drugu stranu
-            // float8 p1 = dct_rows[1] * c_vec.s[1];
-            // float8 p3 = dct_rows[3] * c_vec.s[3];
-            // float8 p5 = dct_rows[5] * c_vec.s[5];
-            // float8 p7 = dct_rows[7] * c_vec.s[7];
-            // float8 sum_odd = (p1 + p3) + (p5 + p7);
-
-            // // 4. KORAK: Finalni zbir (Nivo 3)
-            // float8 final_acc = sum_even + sum_odd;
 
 
-            // *(out_stream + b*8 + i) = final_acc;                     // DEBUG 
             *strm_agen<0, float8>::get_adv(out_stream) = final_acc;
         }
 
