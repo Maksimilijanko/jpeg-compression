@@ -27,6 +27,12 @@
             }
         }
     }
+
+    // global vars for calcuating dct performance
+    uint64_t timer1;
+    uint64_t timer2;
+    uint64_t timer3;
+    uint64_t start;
 #endif
 
 int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, void *prm, uint32_t prm_size, uint32_t flags)
@@ -76,9 +82,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
     uint32_t total_blocks = block_h * blocks_w;
     uint32_t b = 0;
-    for(b = 0; b < total_blocks; b++) {
-        perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
-    }
+    // for(b = 0; b < total_blocks; b++) {
+    //     perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
+    // }
+    perform_dct_on_image((int8_t*)vec_interm_buffer_2, vec_dct_buff, total_blocks);
     #ifdef DEBUG_CYCLE_COUNT
         dct_time = __TSC;
     #endif
@@ -143,37 +150,46 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         char fmt_buf[64];
         int offset = 0;
         
+        const char* separator = "=======================================================================\n";
+        const char* divider   = "-----------------------------------------------------------------------\n";
+
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "\n");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", separator);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", separator);
 
         format_commas(diff_rgb, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "RGB -> Y Conversion", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "RGB -> Y Conversion", fmt_buf);
         
         format_commas(diff_seg, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Segmentation (8x8)", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Segmentation (8x8)", fmt_buf);
         
         format_commas(diff_dct, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "DCT Transform", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "DCT Transform (Total)", fmt_buf);
+
+        // format_commas(timer1 - start, fmt_buf);
+        // offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> First matmul (C x f)", fmt_buf);
+        
+        // format_commas(timer2 - timer1, fmt_buf);
+        // offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Second matmul ((C x f) x C^T)", fmt_buf);
         
         format_commas(diff_quant, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Quantization", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Quantization", fmt_buf);
         
         format_commas(diff_zz, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "ZigZag Reorder", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "ZigZag Reorder", fmt_buf);
         
         format_commas(diff_enc, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "Huffman Encoding", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Huffman Encoding", fmt_buf);
 
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "----------------------------------------------------------------------\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", divider);
         
         format_commas(diff_total, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-30s | %32s |\n", "TOTAL CYCLES", fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "TOTAL CYCLES", fmt_buf);
         
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "======================================================================\n\n");
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s\n", separator);
 
-        appLogPrintf("%s", log_buf);            // single logging, so racing condition between A72 and C7x dont cause it to be scattered
+        appLogPrintf("%s", log_buf);
 
     #endif
     return 0;
@@ -227,33 +243,64 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
     }
 }
 
-/*
-* Manual calculation of DCT and FP math. This is not ideal, but we will worry about optimization later on... :)
-*/
-void perform_dct_on_block(int8_t *b_start, float *dct_coeffs) {
-    int u, v, x, y;
-    float sum, cu, cv;
+// void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs) {
+//     int i, k;
+//     float8 intermediate_regs[8];
+ 
+//     ASSERT_ALIGNED_64(dct_matrix_c);
+//     ASSERT_ALIGNED_64(dct_matrix_c_T);
 
-    for(u = 0; u < 8; u++) {
-        for(v = 0; v < 8; v++) {
+//     #ifdef DEBUG_CYCLE_COUNT
+//         start = __TSC;
+//     #endif
+
+//     #pragma MUST_ITERATE(8, 8, 8)
+//     for(i = 0; i < 8; i++) {
+//         char8 in_char = *((char8 *)&b_start[i * 8]);
+//         float8 in_vec = __convert_float8(in_char);
+
+//         float8 row_acc = (float8)0.0f;
+
+//         #pragma UNROLL(8) 
+//         for(k = 0; k < 8; k++) {
+//             float pixel_val = in_vec.s[k]; 
             
-            sum = 0.0f;
-            for(x = 0; x < 8; x++) {
-                for(y = 0; y < 8; y++) {
-                    sum += b_start[y * 8 + x] * 
-                           cosf(((2 * x + 1) * u * PI_VAL) / 16.0f) * 
-                           cosf(((2 * y + 1) * v * PI_VAL) / 16.0f);
-                }
-            }
+//             float8 c_row = *((float8 *)&dct_matrix_c_T[k * 8]);
+            
+//             row_acc += c_row * pixel_val;
+//         }
 
-            cu = (u == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
-            cv = (v == 0) ? (1.0f / sqrtf(2.0f)) : 1.0f;
+//         intermediate_regs[i] = row_acc;
+//     }
 
-            dct_coeffs[v * 8 + u] = 0.25f * cu * cv * sum;
-        }
-    }
+//     #ifdef DEBUG_CYCLE_COUNT
+//         timer1 = __TSC;
+//     #endif
+    
 
-}
+//     #pragma MUST_ITERATE(8, 8, 8)
+//     for(i = 0; i < 8; i++) {
+//         float8 c_factors = *((float8 *)&dct_matrix_c[i * 8]);
+        
+//         float8 row_acc = (float8)0.0f;
+
+//         #pragma UNROLL(8)
+//         for(k = 0; k < 8; k++) {
+//             float c_val = c_factors.s[k];
+            
+//             float8 m_row = intermediate_regs[k];
+            
+//             row_acc += m_row * c_val;
+//         }
+
+//         *((float8 *)&dct_coeffs[i * 8]) = row_acc;
+//     }
+
+//     #ifdef DEBUG_CYCLE_COUNT
+//         timer2 = __TSC;
+//     #endif
+
+// }
 
 void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks) {
     // Honor the C89 standard...

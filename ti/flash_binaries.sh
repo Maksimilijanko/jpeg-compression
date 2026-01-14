@@ -37,7 +37,7 @@ echo "Copying apps binaries to target..."
 scp $APPS ${TARGET_USER}@${TARGET_IP}:${APPS_TARGET_DIR}
 
 # ===== Restart target =====
-echo "Rebooting target..."
-ssh ${TARGET_USER}@${TARGET_IP} "sync && reboot"
+# echo "Rebooting target..."
+# ssh ${TARGET_USER}@${TARGET_IP} "sync && reboot"
 
 echo "Done."
