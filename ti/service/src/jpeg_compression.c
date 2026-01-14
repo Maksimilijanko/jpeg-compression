@@ -41,8 +41,8 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
 
     uint8_t *vec_r = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_r);
-    uint8_t *vec_g = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_g);
-    uint8_t *vec_b = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_b);
+    uint8_t *vec_gb = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_gb);
+    // uint8_t *vec_b = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_b);
     uint8_t *vec_y = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_y_out);
     int8_t *vec_interm_buffer_1 = (int8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_1);
     int16_t *vec_interm_buffer_2 = (int16_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_2);
@@ -53,8 +53,8 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     // Cache invalidation
     appMemCacheInv(vec_r, total_pixels);
-    appMemCacheInv(vec_g, total_pixels);
-    appMemCacheInv(vec_b, total_pixels);
+    appMemCacheInv(vec_gb, total_pixels);
+    // appMemCacheInv(vec_b, total_pixels);
 
     #ifdef DEBUG_CYCLE_COUNT
         uint64_t start_time, y_time, segmentation_time, dct_time, quantization_time, zig_zag_time, encoding_time;
@@ -72,7 +72,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Store Y into vec_interm_buffer_1
     //rgb_to_y(vec_r, vec_g, vec_b, vec_interm_buffer_1, total_pixels);
 
-    fetch_setup(vec_r, vec_g, vec_b, total_pixels);
+    fetch_setup(vec_r, vec_gb, total_pixels);
 
     for(i = 0; i < total_blocks; i++) {
         fetch_next_block(vec_interm_buffer_1 + i*64);

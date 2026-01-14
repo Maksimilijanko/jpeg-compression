@@ -99,16 +99,25 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
 
     // Separate planar pointers
     uint8_t *ptr_r = shared_input_virt;
-    uint8_t *ptr_g = shared_input_virt + plane_size;
-    uint8_t *ptr_b = shared_input_virt + (2 * plane_size);
+    uint8_t *ptr_gb = shared_input_virt + plane_size;
+    // uint8_t *ptr_b = shared_input_virt + (2 * plane_size);
 
     // De-interleave pixel data (RGB -> R, G, B)
-    for(int i = 0; i < plane_size; i++) {
-        ptr_b[i] = original_rgb_data[i].b;
-        ptr_g[i] = original_rgb_data[i].g;
-        ptr_r[i] = original_rgb_data[i].r;
+    // for(int i = 0; i < plane_size; i++) {
+    //     ptr_b[i] = original_rgb_data[i].b;
+    //     ptr_g[i] = original_rgb_data[i].g;
+    //     ptr_r[i] = original_rgb_data[i].r;
+    // }
+    
+    for(int i = 0, k = 0; i < plane_size; i += 32, k += 64) {
+        for(int j = 0; j < 32; j++) {
+            ptr_r[i + j] = original_rgb_data[i + j].r;
+            
+            ptr_gb[k + j] = original_rgb_data[i + j].g;
+            ptr_gb[k + j + 32] = original_rgb_data[i + j].b;
+        }
     }
-
+    
     // CACHE WRITEBACK: Push data from A72 Cache to DDR so C7x can see it
     appMemCacheWb(shared_input_virt, total_input_size);
 
@@ -121,8 +130,8 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
     uint64_t input_phys_base = appMemGetVirt2PhyBufPtr((uint64_t)shared_input_virt, APP_MEM_HEAP_DDR);
     
     packet.phys_addr_r = input_phys_base;
-    packet.phys_addr_g = input_phys_base + plane_size;
-    packet.phys_addr_b = input_phys_base + (2 * plane_size);
+    packet.phys_addr_gb = input_phys_base + plane_size;
+    // packet.phys_addr_b = input_phys_base + (2 * plane_size);
     
     packet.phys_addr_y_out = appMemGetVirt2PhyBufPtr((uint64_t)shared_output_virt, APP_MEM_HEAP_DDR);
     packet.phys_addr_intermediate_1 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_1_virt, APP_MEM_HEAP_DDR);
