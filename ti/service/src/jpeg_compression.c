@@ -49,7 +49,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     int16_t *vec_interm_buffer_3 = (int16_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_3);
     float   *vec_dct_buff = (float *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_dct_buff);
 
-    int total_pixels = packet->width * packet->height;
+    uint64_t total_pixels = packet->width * packet->height;
 
     // Cache invalidation
     appMemCacheInv(vec_r, total_pixels);
@@ -72,11 +72,12 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Store Y into vec_interm_buffer_1
     //rgb_to_y(vec_r, vec_g, vec_b, vec_interm_buffer_1, total_pixels);
 
-    fetch_setup(vec_r, vec_g, vec_b);
+    fetch_setup(vec_r, vec_g, vec_b, total_pixels);
 
     for(i = 0; i < total_blocks; i++) {
         fetch_next_block(vec_interm_buffer_1 + i*64);
     }
+    // TODO: close SEs
 
 
 
@@ -96,10 +97,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
     total_blocks = blocks_h * blocks_w;
     uint32_t b = 0;
-    // for(b = 0; b < total_blocks; b++) {
-    //     perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
-    // }
-    perform_dct_on_image((int8_t*)vec_interm_buffer_2, vec_dct_buff, total_blocks);
+    for(b = 0; b < total_blocks; b++) {
+        perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
+    }
+    // perform_dct_on_image((int8_t*)vec_interm_buffer_2, vec_dct_buff, total_blocks);
     #ifdef DEBUG_CYCLE_COUNT
         dct_time = __TSC;
     #endif

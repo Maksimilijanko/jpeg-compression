@@ -122,7 +122,7 @@ typedef struct
     #ifdef __cplusplus
     extern "C" {
     #endif
-    void fetch_setup(uint8_t* r_vec, uint8_t* g_vec, uint8_t* b_vec);
+    void fetch_setup(uint8_t* r_vec, uint8_t* g_vec, uint8_t* b_vec, uint64_t image_length);
     #ifdef __cplusplus
     }
     #endif
