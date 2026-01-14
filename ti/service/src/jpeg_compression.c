@@ -61,26 +61,40 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         start_time = __TSC;
     #endif
 
+    uint32_t blocks_w, blocks_h, total_blocks;            // BLOCKS SIZE
+
+    blocks_w = (packet->width + 7) / 8;             // ceiling division
+    blocks_h = (packet->height + 7) / 8;     
+    total_blocks = blocks_w * blocks_h;
+    uint64_t i;
+
     // Color space transformation: RGB --> Y (vec_y now holds grayscale values)
     // Store Y into vec_interm_buffer_1
-    rgb_to_y(vec_r, vec_g, vec_b, vec_interm_buffer_1, total_pixels);
+    //rgb_to_y(vec_r, vec_g, vec_b, vec_interm_buffer_1, total_pixels);
+
+    fetch_setup(vec_r, vec_g, vec_b);
+
+    for(i = 0; i < total_blocks; i++) {
+        fetch_next_block(vec_interm_buffer_1 + i*64);
+    }
+
+
+
     #ifdef DEBUG_CYCLE_COUNT
         y_time = __TSC;
     #endif
 
     // Calculate number of blocks
-    uint32_t blocks_w = 0;
-    uint32_t block_h = 0;
 
     // Take Y's from vec_interm_buffer_1 and segmentate it into 8 x 8 blocks, stored in row-major manner in vec_interm_buffer_2
     // vec_interm_buffer_2 is larger ecause it contains int16_t data. We cast it to uint8_t so we can use it in this step and the next one.
-    image_to_blocks(vec_interm_buffer_1, packet->width, packet->height, &blocks_w, &block_h, (int8_t*)vec_interm_buffer_2);
+    image_to_blocks(vec_interm_buffer_1, packet->width, packet->height, &blocks_w, &blocks_h, (int8_t*)vec_interm_buffer_2);
     #ifdef DEBUG_CYCLE_COUNT
         segmentation_time = __TSC;
     #endif
     
     // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
-    uint32_t total_blocks = block_h * blocks_w;
+    total_blocks = blocks_h * blocks_w;
     uint32_t b = 0;
     // for(b = 0; b < total_blocks; b++) {
     //     perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));

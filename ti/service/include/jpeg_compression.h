@@ -122,6 +122,22 @@ typedef struct
     #ifdef __cplusplus
     extern "C" {
     #endif
+    void fetch_setup(uint8_t* r_vec, uint8_t* g_vec, uint8_t* b_vec);
+    #ifdef __cplusplus
+    }
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+    void fetch_next_block(int8_t* y_output);
+    #ifdef __cplusplus
+    }
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
     
     // DCT using SE and SA
     void perform_dct_on_image(int8_t * restrict input_buffer, 

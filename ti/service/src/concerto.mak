@@ -7,7 +7,7 @@ TARGETTYPE  := library
 
 # Add your source file
 CSOURCES    := jpeg_compression.c quantization_table.c huffman_tables.c dct_matrix.c
-CPPSOURCES  := dct_se.cpp
+CPPSOURCES  := dct_se.cpp fetch_block.cpp
 
 # For passing through user flags
 ifneq ($(USER_CFLAGS),)
