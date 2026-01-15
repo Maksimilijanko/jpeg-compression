@@ -148,8 +148,6 @@ typedef struct
     }
     #endif
 
-    void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks);
-
     void quantize_block(float *dct_block, int16_t* out_quantized_block);
 
     void zigzag_order(const int16_t *input_block, int16_t *output_block);

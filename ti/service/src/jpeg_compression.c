@@ -32,6 +32,13 @@
     uint64_t timer1;
     uint64_t timer2;
     uint64_t timer3;
+    uint64_t total_fetch_time;
+    uint64_t total_dct_time;
+    uint64_t total_quantization_time;
+    uint64_t total_zig_zag_time;
+    uint64_t total_rle_pred_encoding_time;
+    uint64_t total_huffman_time;
+    uint64_t total_encoding_time;
     uint64_t start;
 #endif
 
@@ -42,7 +49,6 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     uint8_t *vec_r = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_r);
     uint8_t *vec_gb = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_gb);
-    // uint8_t *vec_b = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_b);
     uint8_t *vec_y = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_y_out);
     int8_t *vec_interm_buffer_1 = (int8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_1);
     int16_t *vec_interm_buffer_2 = (int16_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_intermediate_2);
@@ -54,12 +60,6 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Cache invalidation
     appMemCacheInv(vec_r, total_pixels);
     appMemCacheInv(vec_gb, total_pixels);
-    // appMemCacheInv(vec_b, total_pixels);
-
-    #ifdef DEBUG_CYCLE_COUNT
-        uint64_t start_time, y_time, segmentation_time, dct_time, quantization_time, zig_zag_time, encoding_time;
-        start_time = __TSC;
-    #endif
 
     uint32_t blocks_w, blocks_h, total_blocks;            // BLOCKS SIZE
 
@@ -68,56 +68,50 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     total_blocks = blocks_w * blocks_h;
     uint64_t i;
 
-    // Color space transformation: RGB --> Y (vec_y now holds grayscale values)
-    // Store Y into vec_interm_buffer_1
-    //rgb_to_y(vec_r, vec_g, vec_b, vec_interm_buffer_1, total_pixels);
+    // Statically allocated stack buffers for processing a single block
+    int8_t block[64];
+    float dct_block[64];
+    int16_t quantized_dct[64];
+    int16_t zigzagged[64];
 
     fetch_setup(vec_r, vec_gb, total_pixels);
 
     for(i = 0; i < total_blocks; i++) {
-        fetch_next_block(vec_interm_buffer_1 + i*64);
+        #ifdef DEBUG_CYCLE_COUNT
+            start = __TSC;
+        #endif
+
+        fetch_next_block(block);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_fetch_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        perform_dct_on_block(block, dct_block);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_dct_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        quantize_block(dct_block, quantized_dct);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_quantization_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        zigzag_order(quantized_dct, zigzagged);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_zig_zag_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        // copy it to one big intermediate buffer for performing encoding
+        memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2);
     }
-    // TODO: close SEs
-
-
-
-    #ifdef DEBUG_CYCLE_COUNT
-        y_time = __TSC;
-    #endif
-
-    // Calculate number of blocks
-
-    // Take Y's from vec_interm_buffer_1 and segmentate it into 8 x 8 blocks, stored in row-major manner in vec_interm_buffer_2
-    // vec_interm_buffer_2 is larger ecause it contains int16_t data. We cast it to uint8_t so we can use it in this step and the next one.
-    image_to_blocks(vec_interm_buffer_1, packet->width, packet->height, &blocks_w, &blocks_h, (int8_t*)vec_interm_buffer_2);
-    #ifdef DEBUG_CYCLE_COUNT
-        segmentation_time = __TSC;
-    #endif
-    
-    // Perform DCT on each block, take blocks from vec_interm_buffer_2 and correspondent DCT coeffs in vec_interm_buffer_1
-    total_blocks = blocks_h * blocks_w;
-    uint32_t b = 0;
-    for(b = 0; b < total_blocks; b++) {
-        perform_dct_on_block((int8_t*)vec_interm_buffer_2 + (b * 64), vec_dct_buff + (b * 64));
-    }
-    // perform_dct_on_image((int8_t*)vec_interm_buffer_2, vec_dct_buff, total_blocks);
-    #ifdef DEBUG_CYCLE_COUNT
-        dct_time = __TSC;
-    #endif
-
-    for(b = 0; b < total_blocks; b++) {
-        quantize_block(vec_dct_buff + (b * 64), vec_interm_buffer_2 + (b * 64));
-    }
-    #ifdef DEBUG_CYCLE_COUNT
-        quantization_time = __TSC;
-    #endif
-
-    for(b = 0; b < total_blocks; b++) {
-        zigzag_order(vec_interm_buffer_2 + (b * 64), vec_interm_buffer_3 + (b * 64));
-    }
-    #ifdef DEBUG_CYCLE_COUNT
-        zig_zag_time = __TSC;
-    #endif
 
     BitWriter bw;
     // write the result into vec_y
@@ -126,9 +120,14 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     bw.bit_pos = 0;
     bw.current = 0;
 
+    #ifdef DEBUG_CYCLE_COUNT
+        start = __TSC;
+    #endif
+
+
     int16_t prev_dc = 0;
-    for(b = 0; b < total_blocks; b++) {
-        prev_dc = encode_coefficients(vec_interm_buffer_3 + (b * 64), prev_dc, &bw);
+    for(i = 0; i < total_blocks; i++) {
+        prev_dc = encode_coefficients(vec_interm_buffer_3 + (i * 64), prev_dc, &bw);
     }
 
     // clean out the remaining byte from BW
@@ -138,8 +137,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     // Write out output size so A72 can perform serialization
     packet->output_size = bw.byte_pos;
+
     #ifdef DEBUG_CYCLE_COUNT
-        encoding_time = __TSC;
+        total_encoding_time = __TSC - start;
+        start = __TSC;
     #endif
 
     // CACHE WRITEBACK (After processing)
@@ -153,13 +154,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Perform cycle calculation and print
 
     #ifdef DEBUG_CYCLE_COUNT
-        uint64_t diff_rgb   = y_time - start_time;
-        uint64_t diff_seg   = segmentation_time - y_time;
-        uint64_t diff_dct   = dct_time - segmentation_time;
-        uint64_t diff_quant = quantization_time - dct_time;
-        uint64_t diff_zz    = zig_zag_time - quantization_time;
-        uint64_t diff_enc   = encoding_time - zig_zag_time;
-        uint64_t diff_total = encoding_time - start_time;
+        // uint64_t diff_rgb   = y_time - start_time;
+        // uint64_t diff_seg   = segmentation_time - y_time;
+        // uint64_t diff_dct   = dct_time - segmentation_time;
+        // uint64_t diff_quant = quantization_time - dct_time;
+        // uint64_t diff_zz    = zig_zag_time - quantization_time;
+        // uint64_t diff_enc   = encoding_time - zig_zag_time;
+        uint64_t diff_total = total_fetch_time + total_dct_time + total_quantization_time + total_zig_zag_time + total_encoding_time;
               
         static char log_buf[2048]; 
         char fmt_buf[64];
@@ -173,13 +174,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "JPEG COMPRESSION STAGE", "CYCLES");
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", separator);
 
-        format_commas(diff_rgb, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "RGB -> Y Conversion", fmt_buf);
+        format_commas(total_fetch_time, fmt_buf);
+        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "RGB -> Y Conversion (segm, Y conv, cent.)", fmt_buf);
         
-        format_commas(diff_seg, fmt_buf);
-        offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Segmentation (8x8)", fmt_buf);
+        // format_commas(diff_seg, fmt_buf);
+        // offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Segmentation (8x8)", fmt_buf);
         
-        format_commas(diff_dct, fmt_buf);
+        format_commas(total_dct_time, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "DCT Transform (Total)", fmt_buf);
 
         // format_commas(timer1 - start, fmt_buf);
@@ -188,13 +189,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         // format_commas(timer2 - timer1, fmt_buf);
         // offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "  -> Second matmul ((C x f) x C^T)", fmt_buf);
         
-        format_commas(diff_quant, fmt_buf);
+        format_commas(total_quantization_time, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Quantization", fmt_buf);
         
-        format_commas(diff_zz, fmt_buf);
+        format_commas(total_zig_zag_time, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "ZigZag Reorder", fmt_buf);
         
-        format_commas(diff_enc, fmt_buf);
+        format_commas(total_encoding_time, fmt_buf);
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "| %-42s | %22s |\n", "Huffman Encoding", fmt_buf);
 
         offset += snprintf(log_buf + offset, sizeof(log_buf)-offset, "%s", divider);
@@ -258,64 +259,6 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
     }
 }
 
-// void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs) {
-//     int i, k;
-//     float8 intermediate_regs[8];
- 
-//     ASSERT_ALIGNED_64(dct_matrix_c);
-//     ASSERT_ALIGNED_64(dct_matrix_c_T);
-
-//     #ifdef DEBUG_CYCLE_COUNT
-//         start = __TSC;
-//     #endif
-
-//     #pragma MUST_ITERATE(8, 8, 8)
-//     for(i = 0; i < 8; i++) {
-//         char8 in_char = *((char8 *)&b_start[i * 8]);
-//         float8 in_vec = __convert_float8(in_char);
-
-//         float8 row_acc = (float8)0.0f;
-
-//         #pragma UNROLL(8) 
-//         for(k = 0; k < 8; k++) {
-//             float pixel_val = in_vec.s[k]; 
-            
-//             float8 c_row = *((float8 *)&dct_matrix_c_T[k * 8]);
-            
-//             row_acc += c_row * pixel_val;
-//         }
-
-//         intermediate_regs[i] = row_acc;
-//     }
-
-//     #ifdef DEBUG_CYCLE_COUNT
-//         timer1 = __TSC;
-//     #endif
-    
-
-//     #pragma MUST_ITERATE(8, 8, 8)
-//     for(i = 0; i < 8; i++) {
-//         float8 c_factors = *((float8 *)&dct_matrix_c[i * 8]);
-        
-//         float8 row_acc = (float8)0.0f;
-
-//         #pragma UNROLL(8)
-//         for(k = 0; k < 8; k++) {
-//             float c_val = c_factors.s[k];
-            
-//             float8 m_row = intermediate_regs[k];
-            
-//             row_acc += m_row * c_val;
-//         }
-
-//         *((float8 *)&dct_coeffs[i * 8]) = row_acc;
-//     }
-
-//     #ifdef DEBUG_CYCLE_COUNT
-//         timer2 = __TSC;
-//     #endif
-
-// }
 
 void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks) {
     // Honor the C89 standard...
