@@ -48,8 +48,8 @@ typedef struct
     int32_t height;
     
     uint64_t phys_addr_r;                   // R planar
-    uint64_t phys_addr_g;                   // G planar
-    uint64_t phys_addr_b;                   // B planar
+    uint64_t phys_addr_gb;                   // G and B planar
+    // uint64_t phys_addr_b;                   // B planar
     uint64_t phys_addr_intermediate_1;      // a buffer to write intermediate results on C7x side (we perform allocation on host/A72 side)
     uint64_t phys_addr_intermediate_2;
     uint64_t phys_addr_intermediate_3;    
@@ -122,6 +122,22 @@ typedef struct
     #ifdef __cplusplus
     extern "C" {
     #endif
+    void fetch_setup(uint8_t* r_vec, uint8_t* gb_vec, uint64_t image_length);
+    #ifdef __cplusplus
+    }
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
+    void fetch_next_block(int8_t* y_output);
+    #ifdef __cplusplus
+    }
+    #endif
+
+    #ifdef __cplusplus
+    extern "C" {
+    #endif
     
     // DCT using SE and SA
     void perform_dct_on_image(int8_t * restrict input_buffer, 
@@ -131,8 +147,6 @@ typedef struct
     #ifdef __cplusplus
     }
     #endif
-
-    void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks);
 
     void quantize_block(float *dct_block, int16_t* out_quantized_block);
 

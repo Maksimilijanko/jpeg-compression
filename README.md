@@ -29,6 +29,7 @@ Before the first build, you must configure the paths and patch the SDK to includ
     ```bash
     export JPEG_COMPRESSION_PATH=$(pwd)
     export TI_PSDK_PATH=/path/to/your/psdk
+    export CGT7X_ROOT=/path/to/your/CGT7X/root
     ```
 
 2.  Run the setup script:

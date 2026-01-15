@@ -22,6 +22,7 @@
 // Function Declaration
 // --------------------------------------------------------------------------------
 void send_image_to_c7x(RGB *original_rgb_data, int width, int height, uint8_t* result, uint32_t* result_size);
+void image_to_blocks(RGB *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, RGB *out_blocks);
 
 // --------------------------------------------------------------------------------
 // Main Function
@@ -41,6 +42,12 @@ int main(int argc, char **argv)
     // Load BMP
     BMP_IMAGE image = load_bmp_image(params.inputFile); 
     RGB* pixels = read_pixels(image.buffer, image.info.width, image.info.height, image.info.height <= 0);
+    // We need to reorder indexes to block-row-major order
+    uint32_t blocks_w = (image.info.width + 7) / 8;             // ceiling division
+    uint32_t blocks_h = (image.info.height + 7) / 8;
+    RGB* block_order_pixels = (RGB*)calloc(blocks_w * blocks_h * 64, sizeof(RGB));
+    image_to_blocks(pixels, image.info.width, image.info.height, &blocks_w, &blocks_h, block_order_pixels);
+
     
     // Check if image data exists
     if (image.buffer == NULL) {
@@ -57,7 +64,7 @@ int main(int argc, char **argv)
     uint32_t result_size;
 
     // Dispatch processing to C7x
-    send_image_to_c7x(pixels, image.info.width, image.info.height, buffer, &result_size);
+    send_image_to_c7x(block_order_pixels, blocks_w * 8, blocks_h * 8, buffer, &result_size);
 
     FILE *f_out = fopen(params.outputFile, "wb");
     if(f_out) {
@@ -72,6 +79,33 @@ int main(int argc, char **argv)
     appDeInit();
     
     return 0;
+}
+
+void image_to_blocks(RGB *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, RGB *out_blocks) {
+    uint32_t blocks_w, blocks_h;
+    uint32_t by, bx, y, x;
+    uint32_t img_x, img_y, block_index;
+
+    blocks_w = (width + 7) / 8;             // ceiling division
+    blocks_h = (height + 7) / 8;             
+
+    *out_blocks_w = blocks_w;
+    *out_blocks_h = blocks_h;
+
+    for(by = 0; by < blocks_h; by++) {
+        for(bx = 0; bx < blocks_w; bx++) {
+
+            for(y = 0; y < 8; y++) {
+                for(x = 0; x < 8; x++) {
+                    img_x = bx * 8 + x < width ? bx * 8 + x : width - 1;
+                    img_y = by * 8 + y < height ? by * 8 + y : height - 1;
+                    block_index = (by * blocks_w + bx) * 64 + (y * 8 + x);
+                    out_blocks[block_index] = image_buffer[img_y * width + img_x];
+                }
+            }
+        }
+    }
+
 }
 
 // --------------------------------------------------------------------------------
@@ -99,16 +133,17 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
 
     // Separate planar pointers
     uint8_t *ptr_r = shared_input_virt;
-    uint8_t *ptr_g = shared_input_virt + plane_size;
-    uint8_t *ptr_b = shared_input_virt + (2 * plane_size);
-
-    // De-interleave pixel data (RGB -> R, G, B)
-    for(int i = 0; i < plane_size; i++) {
-        ptr_b[i] = original_rgb_data[i].b;
-        ptr_g[i] = original_rgb_data[i].g;
-        ptr_r[i] = original_rgb_data[i].r;
+    uint8_t *ptr_gb = shared_input_virt + plane_size;
+    
+    for(int i = 0, k = 0; i < plane_size; i += 32, k += 64) {
+        for(int j = 0; j < 32; j++) {
+            ptr_r[i + j] = original_rgb_data[i + j].r;
+            
+            ptr_gb[k + j] = original_rgb_data[i + j].g;
+            ptr_gb[k + j + 32] = original_rgb_data[i + j].b;
+        }
     }
-
+    
     // CACHE WRITEBACK: Push data from A72 Cache to DDR so C7x can see it
     appMemCacheWb(shared_input_virt, total_input_size);
 
@@ -121,8 +156,8 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
     uint64_t input_phys_base = appMemGetVirt2PhyBufPtr((uint64_t)shared_input_virt, APP_MEM_HEAP_DDR);
     
     packet.phys_addr_r = input_phys_base;
-    packet.phys_addr_g = input_phys_base + plane_size;
-    packet.phys_addr_b = input_phys_base + (2 * plane_size);
+    packet.phys_addr_gb = input_phys_base + plane_size;
+    // packet.phys_addr_b = input_phys_base + (2 * plane_size);
     
     packet.phys_addr_y_out = appMemGetVirt2PhyBufPtr((uint64_t)shared_output_virt, APP_MEM_HEAP_DDR);
     packet.phys_addr_intermediate_1 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_1_virt, APP_MEM_HEAP_DDR);
@@ -156,40 +191,6 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
     appMemCacheInv(shared_intermediate_2_virt, plane_size * 2);
     appMemCacheInv(shared_intermediate_3_virt, plane_size * 2);
     appMemCacheInv(shared_intermediate_dct_buff, plane_size * 4);
-
-    // DEBUG: Print results (First 100 pixels of Y plane)
-    int8_t *y_result = (int8_t*) shared_intermediate_1_virt;
-    printf("[A72] Result Y Plane (First 100 pixels):\n");
-    for(int i = 0; i < 64; i++) {
-        printf("%3d\t", y_result[i]);
-
-        if ((i + 1) % 8 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-
-    float *dct_result = (float*) shared_intermediate_dct_buff;
-    printf("[A72] Result DCT coeffs  (First 100 pixels):\n");
-    for(int i = 0; i < 64; i++) {
-        printf("%.3f\t", dct_result[i]);
-
-        if ((i + 1) % 8 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-
-    int16_t *dct_result_q = shared_intermediate_2_virt;
-    printf("[A72] Result DCT coeffs (quantized) (First 100 pixels):\n");
-    for(int i = 0; i < 64; i++) {
-        printf("%3d\t", dct_result_q[i]);
-
-        if ((i + 1) % 8 == 0) {
-            printf("\n");
-        }
-    }
-    printf("\n");
 
     // Copy result to out buffer
     *result_size = packet.output_size;
