@@ -271,14 +271,6 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
     }
 }
 
-
-void quantize_block(float *dct_block, int16_t* out_quantized_block) {
-    uint32_t i = 0;
-    for(i = 0; i < 64; i++) {
-        out_quantized_block[i] = (int16_t)roundf(dct_block[i] / std_lum_qt[i]);         // rounding to nearest integer
-    }
-}
-
 void zigzag_order(const int16_t *input_block, int16_t *output_block) {
     /*
     * Instead of computing the zigzag order on the fly, we use a predefined mapping.
