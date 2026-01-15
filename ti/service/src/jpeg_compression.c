@@ -46,6 +46,18 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 {
     JPEG_COMPRESSION_DTO* packet = (JPEG_COMPRESSION_DTO*) prm;
 
+    // Reset global variables
+    // Global variables are alive as long as the service is up, which is determined by vision apps running 
+    #ifdef DEBUG_CYCLE_COUNT
+        total_fetch_time = 0;
+        total_dct_time = 0;
+        total_quantization_time = 0;
+        total_zig_zag_time = 0;
+        total_rle_pred_encoding_time = 0;
+        total_huffman_time = 0;
+        total_encoding_time = 0;
+    #endif
+
 
     uint8_t *vec_r = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_r);
     uint8_t *vec_gb = (uint8_t *)(uintptr_t)appMemShared2TargetPtr(packet->phys_addr_gb);
@@ -259,34 +271,6 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
     }
 }
 
-
-void image_to_blocks(int8_t *image_buffer, uint32_t width, uint32_t height, uint32_t *out_blocks_w, uint32_t *out_blocks_h, int8_t *out_blocks) {
-    // Honor the C89 standard...
-    uint32_t blocks_w, blocks_h;
-    uint32_t by, bx, y, x;
-    uint32_t img_x, img_y, block_index;
-
-    blocks_w = (width + 7) / 8;             // ceiling division
-    blocks_h = (height + 7) / 8;             
-
-    *out_blocks_w = blocks_w;
-    *out_blocks_h = blocks_h;
-
-    for(by = 0; by < blocks_h; by++) {
-        for(bx = 0; bx < blocks_w; bx++) {
-
-            for(y = 0; y < 8; y++) {
-                for(x = 0; x < 8; x++) {
-                    img_x = bx * 8 + x < width ? bx * 8 + x : width - 1;
-                    img_y = by * 8 + y < height ? by * 8 + y : height - 1;
-                    block_index = (by * blocks_w + bx) * 64 + (y * 8 + x);
-                    out_blocks[block_index] = image_buffer[img_y * width + img_x];
-                }
-            }
-        }
-    }
-
-}
 
 void quantize_block(float *dct_block, int16_t* out_quantized_block) {
     uint32_t i = 0;
