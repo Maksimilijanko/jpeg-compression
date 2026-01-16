@@ -72,7 +72,8 @@ typedef struct
 #ifdef __C7000__
     #define ASSERT_ALIGNED_64(x) (_nassert(((uint64_t)(x) & 0x3F) == 0))
 
-    extern uint8_t std_lum_qt[64];          // quantization table declaration (defined in quantization_table.c)
+    extern uint8_t std_lum_qt[64];                  // quantization table declaration (defined in quantization_table.c)
+    extern const float std_lum_qt_recip[64];        // precalculated reciprocal standard quantization table (defined in quantization_table_reciprocal.c)
 
     typedef struct {
         uint8_t *buffer;    // Buffer in which we write encoded coefficients
