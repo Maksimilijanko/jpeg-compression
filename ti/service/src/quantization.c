@@ -1,11 +1,27 @@
 #include "jpeg_compression.h"
 #include <math.h>
+#include <c7x.h>
 
-void quantize_block(float *dct_block, int16_t* out_quantized_block) {
-    uint32_t i = 0;
-    for(i = 0; i < 64; i++) {
-        // float rec = 1 / std_lum_qt[i];              // use this to force multiply
-        // out_quantized_block[i] = (int16_t)roundf(dct_block[i] * std_lum_qt_recip[i]);         // rounding to nearest integer
-        out_quantized_block[i] = (int16_t)(dct_block[i] * std_lum_qt_recip[i] + 0.5);
+void quantize_block(float* restrict dct_block, int16_t* restrict out_quantized_block) {
+    uint8_t i = 0;
+    float8* input = (float8*)dct_block;
+    short8* out = (short8*)out_quantized_block;
+    float8* dct_table = (float8*)std_lum_qt_recip;
+
+    float8 zeros = (float8)0.0f;
+    float8 plus_half = (float8)0.5f;
+    float8 minus_half = (float8)-0.5f;
+
+    for(i = 0; i < 4; i++) {
+        float8 in = *(input + i);
+        float8 dct_in = *(dct_table + i);
+        float8 result = in * dct_in;
+
+        // Use __vpred for storing an array of bools
+        __vpred pred = __cmp_ge_pred(result, zeros);
+        float8 offset = __select(pred, plus_half, minus_half);
+
+        *(out + i) = __convert_short8(result + offset);
     }
+
 }
