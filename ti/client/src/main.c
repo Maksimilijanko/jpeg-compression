@@ -143,6 +143,24 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
             ptr_gb[k + j + 32] = original_rgb_data[i + j].b;
         }
     }
+
+    // DEBUG INFO
+    printf("\n");
+    for(int i = 1; i <= 64; i++)
+    {
+        printf("%d ", ptr_r[i]);
+        if(i % 8 == 0)
+            printf("\n");
+    }
+    printf("\n");
+    for(int i = 1; i <= 64; i++)
+    {
+        printf("%d ", ptr_gb[i]);
+        if(i % 8 == 0)
+            printf("\n");
+    }
+    printf("\n");
+ 
     
     // CACHE WRITEBACK: Push data from A72 Cache to DDR so C7x can see it
     appMemCacheWb(shared_input_virt, total_input_size);

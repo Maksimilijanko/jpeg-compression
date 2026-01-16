@@ -83,7 +83,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Statically allocated stack buffers for processing a single block
     int8_t block[64];
     float dct_block[64];
-    int16_t quantized_dct[64];
+    int16_t __attribute__((aligned(64))) quantized_dct[64];
     int16_t zigzagged[64];
 
     fetch_setup(vec_r, vec_gb, total_pixels);
