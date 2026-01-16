@@ -82,13 +82,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     // Statically allocated stack buffers for processing a single block
     int8_t block[64];
-    float dct_block[64];
-    int16_t quantized_dct[64];
+    float dct_block[128];
+    int16_t __attribute__((aligned(64))) quantized_dct[128];
     int16_t zigzagged[64];
 
     fetch_setup(vec_r, vec_gb, total_pixels);
 
-    for(i = 0; i < total_blocks; i++) {
+    for(i = 0; i < total_blocks; i += 2) {
         #ifdef DEBUG_CYCLE_COUNT
             start = __TSC;
         #endif
@@ -107,7 +107,26 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
             start = __TSC;
         #endif
 
-        quantize_block(dct_block, quantized_dct);
+        #ifdef DEBUG_CYCLE_COUNT
+            start = __TSC;
+        #endif
+
+        fetch_next_block(block);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_fetch_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        perform_dct_on_block(block, dct_block + 64);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_dct_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        // perform quantization on two blocks at once
+        quantize_block(dct_block, quantized_dct, 2);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_quantization_time += __TSC - start;
@@ -123,6 +142,21 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
         // copy it to one big intermediate buffer for performing encoding
         memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            // total_quantization_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        zigzag_order(quantized_dct + 64, zigzagged);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_zig_zag_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        // copy it to one big intermediate buffer for performing encoding
+        memcpy(vec_interm_buffer_3 + i * 64 + 64, zigzagged, 64 * 2);
     }
 
     BitWriter bw;
@@ -268,14 +302,6 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
         y_temp = y_temp - val_128;              // center around zero because of DCTs
 
         vec_y[i] = convert_char32(y_temp);
-    }
-}
-
-
-void quantize_block(float *dct_block, int16_t* out_quantized_block) {
-    uint32_t i = 0;
-    for(i = 0; i < 64; i++) {
-        out_quantized_block[i] = (int16_t)roundf(dct_block[i] / std_lum_qt[i]);         // rounding to nearest integer
     }
 }
 
