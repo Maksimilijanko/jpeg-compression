@@ -149,7 +149,7 @@ typedef struct
     }
     #endif
 
-    void quantize_block(float* restrict dct_block, int16_t* restrict out_quantized_block);
+    void quantize_block(float* restrict dct_block, int16_t* restrict out_quantized_block, int16_t num_blocks);
 
     void zigzag_order(const int16_t *input_block, int16_t *output_block);
 

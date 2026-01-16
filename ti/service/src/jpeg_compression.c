@@ -82,13 +82,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
     // Statically allocated stack buffers for processing a single block
     int8_t block[64];
-    float dct_block[64];
-    int16_t __attribute__((aligned(64))) quantized_dct[64];
+    float dct_block[128];
+    int16_t __attribute__((aligned(64))) quantized_dct[128];
     int16_t zigzagged[64];
 
     fetch_setup(vec_r, vec_gb, total_pixels);
 
-    for(i = 0; i < total_blocks; i++) {
+    for(i = 0; i < total_blocks; i += 2) {
         #ifdef DEBUG_CYCLE_COUNT
             start = __TSC;
         #endif
@@ -107,7 +107,26 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
             start = __TSC;
         #endif
 
-        quantize_block(dct_block, quantized_dct);
+        #ifdef DEBUG_CYCLE_COUNT
+            start = __TSC;
+        #endif
+
+        fetch_next_block(block);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_fetch_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        perform_dct_on_block(block, dct_block + 64);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_dct_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        // perform quantization on two blocks at once
+        quantize_block(dct_block, quantized_dct, 2);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_quantization_time += __TSC - start;
@@ -123,6 +142,21 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
         // copy it to one big intermediate buffer for performing encoding
         memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            // total_quantization_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        zigzag_order(quantized_dct + 64, zigzagged);
+
+        #ifdef DEBUG_CYCLE_COUNT
+            total_zig_zag_time += __TSC - start;
+            start = __TSC;
+        #endif
+
+        // copy it to one big intermediate buffer for performing encoding
+        memcpy(vec_interm_buffer_3 + i * 64 + 64, zigzagged, 64 * 2);
     }
 
     BitWriter bw;
