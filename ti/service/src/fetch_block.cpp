@@ -41,7 +41,7 @@ extern "C" void fetch_setup(uint8_t* r_vec, uint8_t* gb_vec, uint64_t image_leng
 
 }
 
-extern "C" void fetch_next_block(int8_t* y_output) {
+extern "C" void fetch_next_blocks(int8_t* y_output, uint16_t num_blocks) {
     
     char32 * vec_y_out = (char32 *) y_output;
 
@@ -50,33 +50,37 @@ extern "C" void fetch_next_block(int8_t* y_output) {
     short32 coeff_b = (short32) 29;
     short32 val_128 = (short32) 128;
 
-    // Fetch the R components from the first one
-    uchar32 r_in_1 = strm_eng<0, uchar32>::get_adv();
-    uchar64 gb_in_1 = strm_eng<1, uchar64>::get_adv();
+    uint16_t i = 0;
+    for(i = 0; i < num_blocks; i++) {
+        // Fetch the R components from the first one
+        uchar32 r_in_1 = strm_eng<0, uchar32>::get_adv();
+        uchar64 gb_in_1 = strm_eng<1, uchar64>::get_adv();
+    
+        // Upcasting
+        short32 r_s_1 = __convert_short32(r_in_1);
+        short32 g_s_1 = __convert_short32(gb_in_1.lo);
+        short32 b_s_1 = __convert_short32(gb_in_1.hi);
+    
+        short32 y_temp_1 = (r_s_1 * coeff_r) + (g_s_1 * coeff_g) + (b_s_1 * coeff_b);
+        y_temp_1 = (y_temp_1 >> 8) - val_128;
+    
+        vec_y_out[2*i + 0] = __convert_char32(y_temp_1);
+    
+        // We repeat everything, but for the second half of the block
+    
+        uchar32 r_in_2 = strm_eng<0, uchar32>::get_adv();
+        uchar64 gb_in_2 = strm_eng<1, uchar64>::get_adv();
+    
+        short32 r_s_2 = __convert_short32(r_in_2);
+        short32 g_s_2 = __convert_short32(gb_in_2.lo);
+        short32 b_s_2 = __convert_short32(gb_in_2.hi);
+    
+        short32 y_temp_2 = (r_s_2 * coeff_r) + (g_s_2 * coeff_g) + (b_s_2 * coeff_b);
+        y_temp_2 = (y_temp_2 >> 8) - val_128;
+    
+        vec_y_out[2*i + 1] = __convert_char32(y_temp_2);
 
-    // Upcasting
-    short32 r_s_1 = __convert_short32(r_in_1);
-    short32 g_s_1 = __convert_short32(gb_in_1.lo);
-    short32 b_s_1 = __convert_short32(gb_in_1.hi);
-
-    short32 y_temp_1 = (r_s_1 * coeff_r) + (g_s_1 * coeff_g) + (b_s_1 * coeff_b);
-    y_temp_1 = (y_temp_1 >> 8) - val_128;
-
-    vec_y_out[0] = __convert_char32(y_temp_1);
-
-    // We repeat everything, but for the second half of the block
-
-    uchar32 r_in_2 = strm_eng<0, uchar32>::get_adv();
-    uchar64 gb_in_2 = strm_eng<1, uchar64>::get_adv();
-
-    short32 r_s_2 = __convert_short32(r_in_2);
-    short32 g_s_2 = __convert_short32(gb_in_2.lo);
-    short32 b_s_2 = __convert_short32(gb_in_2.hi);
-
-    short32 y_temp_2 = (r_s_2 * coeff_r) + (g_s_2 * coeff_g) + (b_s_2 * coeff_b);
-    y_temp_2 = (y_temp_2 >> 8) - val_128;
-
-    vec_y_out[1] = __convert_char32(y_temp_2);
+    }
 
 }
 

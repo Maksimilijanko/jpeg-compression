@@ -131,7 +131,7 @@ typedef struct
     #ifdef __cplusplus
     extern "C" {
     #endif
-    void fetch_next_block(int8_t* y_output);
+    void fetch_next_blocks(int8_t* y_output, uint16_t num_blocks);
     #ifdef __cplusplus
     }
     #endif

@@ -81,10 +81,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     uint64_t i;
 
     // Statically allocated stack buffers for processing a single block
-    int8_t block[64];
-    float dct_block[128];
-    int16_t __attribute__((aligned(64))) quantized_dct[128];
-    int16_t zigzagged[64];
+    int8_t block[256];
+    float dct_block[256];
+    int16_t __attribute__((aligned(64))) quantized_dct[256];
+    int16_t zigzagged[256];
 
     fetch_setup(vec_r, vec_gb, total_pixels);
 
@@ -93,7 +93,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
             start = __TSC;
         #endif
 
-        fetch_next_block(block);
+        fetch_next_blocks(block, 2);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_fetch_time += __TSC - start;
@@ -101,29 +101,13 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         #endif
 
         perform_dct_on_block(block, dct_block);
+        perform_dct_on_block(block + 64, dct_block + 64);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_dct_time += __TSC - start;
             start = __TSC;
         #endif
 
-        #ifdef DEBUG_CYCLE_COUNT
-            start = __TSC;
-        #endif
-
-        fetch_next_block(block);
-
-        #ifdef DEBUG_CYCLE_COUNT
-            total_fetch_time += __TSC - start;
-            start = __TSC;
-        #endif
-
-        perform_dct_on_block(block, dct_block + 64);
-
-        #ifdef DEBUG_CYCLE_COUNT
-            total_dct_time += __TSC - start;
-            start = __TSC;
-        #endif
 
         // perform quantization on two blocks at once
         quantize_block(dct_block, quantized_dct, 2);
