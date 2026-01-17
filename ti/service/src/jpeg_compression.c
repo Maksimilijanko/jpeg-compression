@@ -100,8 +100,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
             start = __TSC;
         #endif
 
-        perform_dct_on_block(block, dct_block);
-        perform_dct_on_block(block + 64, dct_block + 64);
+        perform_dct_on_blocks(block, dct_block, 2);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_dct_time += __TSC - start;

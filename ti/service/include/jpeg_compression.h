@@ -118,7 +118,7 @@ typedef struct
     // Convert RGB color space to Y
     void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int num_pixels);
 
-    void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs);
+    void perform_dct_on_blocks(int8_t * restrict b_start, float * restrict dct_coeffs, int8_t num_blocks);
 
     #ifdef __cplusplus
     extern "C" {
