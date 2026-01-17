@@ -151,7 +151,7 @@ typedef struct
 
     void quantize_block(float* restrict dct_block, int16_t* restrict out_quantized_block, int16_t num_blocks);
 
-    void zigzag_order(const int16_t *input_block, int16_t *output_block);
+    void zigzag_order(const int16_t *input_block, int16_t *output_block, uint8_t num_blocks);
 
     void bw_write(BitWriter *bw, uint32_t code, int length);
 
