@@ -25,7 +25,7 @@ void perform_dct_on_blocks(int8_t * restrict b_start, float * restrict dct_coeff
     //     dct_C_regs[i] = *((float8 *)&dct_matrix_c[i * 8]);
     // }
 
-    // #pragma MUST_ITERATE(2, , 2)
+    #pragma MUST_ITERATE(4, , 4)
     for(b = 0; b < num_blocks; b++) {
         float8 intermediate_regs[8];
         float8* current_output = (float8*)(dct_coeffs + b * 64);

@@ -80,27 +80,33 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     total_blocks = blocks_w * blocks_h;
     uint64_t i;
 
+    uint8_t num_blocks = 32;
+    uint16_t size = num_blocks * 64;
+
     // Statically allocated stack buffers for processing a single block
-    int8_t block[256];
-    float dct_block[256];
-    int16_t __attribute__((aligned(64))) quantized_dct[256];
-    int16_t zigzagged[256];
+    int8_t block[size];
+    float dct_block[size];
+    int16_t __attribute__((aligned(64))) quantized_dct[size];
+    int16_t zigzagged[size];
+
+    // Control how many blocks are being processed at once
+    
 
     fetch_setup(vec_r, vec_gb, total_pixels);
 
-    for(i = 0; i < total_blocks; i += 2) {
+    for(i = 0; i < total_blocks; i += num_blocks) {
         #ifdef DEBUG_CYCLE_COUNT
             start = __TSC;
         #endif
 
-        fetch_next_blocks(block, 2);
+        fetch_next_blocks(block, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_fetch_time += __TSC - start;
             start = __TSC;
         #endif
 
-        perform_dct_on_blocks(block, dct_block, 2);
+        perform_dct_on_blocks(block, dct_block, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_dct_time += __TSC - start;
@@ -109,14 +115,14 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
 
 
         // perform quantization on two blocks at once
-        quantize_block(dct_block, quantized_dct, 2);
+        quantize_block(dct_block, quantized_dct, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_quantization_time += __TSC - start;
             start = __TSC;
         #endif
 
-        zigzag_order(quantized_dct, zigzagged, 2);
+        zigzag_order(quantized_dct, zigzagged, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_zig_zag_time += __TSC - start;
@@ -124,7 +130,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         #endif
 
         // copy it to one big intermediate buffer for performing encoding
-        memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2 * 2);        // copy two blocks of uint16_t
+        memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2 * num_blocks);        // copy two blocks of uint16_t
 
         #ifdef DEBUG_CYCLE_COUNT
             // total_quantization_time += __TSC - start;
