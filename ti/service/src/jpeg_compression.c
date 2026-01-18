@@ -84,10 +84,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     uint16_t size = num_blocks * 64;
 
     // Statically allocated stack buffers for processing a single block
-    int8_t block[size];
-    float dct_block[size];
+    int8_t __attribute__((aligned(64))) block[size];
+    float __attribute__((aligned(64))) dct_block[size];
     int16_t __attribute__((aligned(64))) quantized_dct[size];
-    int16_t zigzagged[size];
+    int16_t __attribute__((aligned(64))) zigzagged[size];
 
     // Control how many blocks are being processed at once
     

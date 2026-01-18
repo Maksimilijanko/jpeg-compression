@@ -1,11 +1,11 @@
 #include "jpeg_compression.h"
 
 
-void zigzag_order(const int16_t *input_block, int16_t *output_block, uint8_t num_blocks) {
+void zigzag_order(const int16_t* restrict input_block, int16_t* restrict output_block, uint8_t num_blocks) {
     /*
     * Instead of computing the zigzag order on the fly, we use a predefined mapping.
     */
-    const uint8_t zigzag_map[64] = {
+    const __attribute__((aligned(64))) uint8_t zigzag_map[64] = {
      0,  1,  8, 16,  9,  2,  3, 10,
     17, 24, 32, 25, 18, 11,  4,  5,
     12, 19, 26, 33, 40, 48, 41, 34,
@@ -16,6 +16,9 @@ void zigzag_order(const int16_t *input_block, int16_t *output_block, uint8_t num
     53, 60, 61, 54, 47, 55, 62, 63
     };
     uint32_t i = 0, b;
+
+    ASSERT_ALIGNED_64(input_block);
+    ASSERT_ALIGNED_64(output_block);
 
     for(b = 0; b < num_blocks; b++) {
 
