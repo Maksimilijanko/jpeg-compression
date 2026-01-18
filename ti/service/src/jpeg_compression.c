@@ -93,6 +93,7 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     
 
     fetch_setup(vec_r, vec_gb, total_pixels);
+    init_zigzag();
 
     for(i = 0; i < total_blocks; i += num_blocks) {
         #ifdef DEBUG_CYCLE_COUNT
