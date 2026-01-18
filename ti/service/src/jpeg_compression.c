@@ -80,60 +80,49 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     total_blocks = blocks_w * blocks_h;
     uint64_t i;
 
+    uint8_t num_blocks = 32;
+    uint16_t size = num_blocks * 64;
+
     // Statically allocated stack buffers for processing a single block
-    int8_t block[64];
-    float dct_block[128];
-    int16_t __attribute__((aligned(64))) quantized_dct[128];
-    int16_t zigzagged[64];
+    int8_t block[size];
+    float dct_block[size];
+    int16_t __attribute__((aligned(64))) quantized_dct[size];
+    int16_t zigzagged[size];
+
+    // Control how many blocks are being processed at once
+    
 
     fetch_setup(vec_r, vec_gb, total_pixels);
 
-    for(i = 0; i < total_blocks; i += 2) {
+    for(i = 0; i < total_blocks; i += num_blocks) {
         #ifdef DEBUG_CYCLE_COUNT
             start = __TSC;
         #endif
 
-        fetch_next_block(block);
-
-        #ifdef DEBUG_CYCLE_COUNT
-            total_fetch_time += __TSC - start;
-            start = __TSC;
-        #endif
-
-        perform_dct_on_block(block, dct_block);
-
-        #ifdef DEBUG_CYCLE_COUNT
-            total_dct_time += __TSC - start;
-            start = __TSC;
-        #endif
-
-        #ifdef DEBUG_CYCLE_COUNT
-            start = __TSC;
-        #endif
-
-        fetch_next_block(block);
+        fetch_next_blocks(block, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_fetch_time += __TSC - start;
             start = __TSC;
         #endif
 
-        perform_dct_on_block(block, dct_block + 64);
+        perform_dct_on_blocks(block, dct_block, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_dct_time += __TSC - start;
             start = __TSC;
         #endif
+
 
         // perform quantization on two blocks at once
-        quantize_block(dct_block, quantized_dct, 2);
+        quantize_block(dct_block, quantized_dct, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_quantization_time += __TSC - start;
             start = __TSC;
         #endif
 
-        zigzag_order(quantized_dct, zigzagged);
+        zigzag_order(quantized_dct, zigzagged, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
             total_zig_zag_time += __TSC - start;
@@ -141,22 +130,12 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
         #endif
 
         // copy it to one big intermediate buffer for performing encoding
-        memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2);
+        memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2 * num_blocks);        // copy two blocks of uint16_t
 
         #ifdef DEBUG_CYCLE_COUNT
             // total_quantization_time += __TSC - start;
             start = __TSC;
         #endif
-
-        zigzag_order(quantized_dct + 64, zigzagged);
-
-        #ifdef DEBUG_CYCLE_COUNT
-            total_zig_zag_time += __TSC - start;
-            start = __TSC;
-        #endif
-
-        // copy it to one big intermediate buffer for performing encoding
-        memcpy(vec_interm_buffer_3 + i * 64 + 64, zigzagged, 64 * 2);
     }
 
     BitWriter bw;
@@ -302,27 +281,6 @@ void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int
         y_temp = y_temp - val_128;              // center around zero because of DCTs
 
         vec_y[i] = convert_char32(y_temp);
-    }
-}
-
-void zigzag_order(const int16_t *input_block, int16_t *output_block) {
-    /*
-    * Instead of computing the zigzag order on the fly, we use a predefined mapping.
-    */
-    const uint8_t zigzag_map[64] = {
-     0,  1,  8, 16,  9,  2,  3, 10,
-    17, 24, 32, 25, 18, 11,  4,  5,
-    12, 19, 26, 33, 40, 48, 41, 34,
-    27, 20, 13,  6,  7, 14, 21, 28,
-    35, 42, 49, 56, 57, 50, 43, 36,
-    29, 22, 15, 23, 30, 37, 44, 51,
-    58, 59, 52, 45, 38, 31, 39, 46,
-    53, 60, 61, 54, 47, 55, 62, 63
-    };
-    uint32_t i = 0;
-
-    for(i = 0; i < 64; i++) {
-        output_block[i] = input_block[zigzag_map[i]];
     }
 }
 

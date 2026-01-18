@@ -118,7 +118,7 @@ typedef struct
     // Convert RGB color space to Y
     void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int num_pixels);
 
-    void perform_dct_on_block(int8_t * restrict b_start, float * restrict dct_coeffs);
+    void perform_dct_on_blocks(int8_t * restrict b_start, float * restrict dct_coeffs, int8_t num_blocks);
 
     #ifdef __cplusplus
     extern "C" {
@@ -131,7 +131,7 @@ typedef struct
     #ifdef __cplusplus
     extern "C" {
     #endif
-    void fetch_next_block(int8_t* y_output);
+    void fetch_next_blocks(int8_t* y_output, uint16_t num_blocks);
     #ifdef __cplusplus
     }
     #endif
@@ -151,7 +151,7 @@ typedef struct
 
     void quantize_block(float* restrict dct_block, int16_t* restrict out_quantized_block, int16_t num_blocks);
 
-    void zigzag_order(const int16_t *input_block, int16_t *output_block);
+    void zigzag_order(const int16_t *input_block, int16_t *output_block, uint8_t num_blocks);
 
     void bw_write(BitWriter *bw, uint32_t code, int length);
 
