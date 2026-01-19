@@ -79,7 +79,7 @@ typedef struct
         uint8_t *buffer;    // Buffer in which we write encoded coefficients
         uint32_t byte_pos;  // Current byte in the buffer
         uint32_t bit_pos;   // Current bit position in the current byte (0-7)
-        uint8_t current;    // Current byte being constructed
+        uint64_t current;    // Current 8B being constructed
     } BitWriter;
 
     /*
@@ -89,16 +89,6 @@ typedef struct
         uint16_t code;      // Code itself
         uint8_t len;        // Length of the code in bits
     } HuffmanCode;
-
-    /*
-    * Structure representing a Variable Length Integer.
-    * Used for encoding non-zero DCT coefficients.
-    */
-    typedef struct {
-        uint16_t bits;      // Bits representing the value
-        uint8_t len;        // Length of the bits
-    } VLI;                  // VLI - Variable Length Integer
-
 
     /* Huffman tables */
     extern const HuffmanCode huff_dc_lum[16];   // DC table
@@ -154,11 +144,10 @@ typedef struct
     void zigzag_order(const int16_t* restrict input_block, int16_t* restrict output_block, uint8_t num_blocks);
     void init_zigzag(void);
 
-    void bw_write(BitWriter *bw, uint32_t code, int length);
-
+    // void bw_write(BitWriter *bw, uint32_t code, int length);
+    static inline void bw_write(BitWriter *bw, uint32_t code, int length);
     void bw_put_byte(BitWriter *bw, uint8_t val);
-
-    VLI get_vli(int16_t value);
+    void flush_bits(BitWriter * restrict bw);
 
     int16_t encode_coefficients(int16_t* dct_block, int16_t prev_dc, BitWriter* bw);
 

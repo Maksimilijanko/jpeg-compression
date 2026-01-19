@@ -1,114 +1,173 @@
 #include "jpeg_compression.h"
+#include <c7x.h>
 
-void bw_write(BitWriter *bw, uint32_t code, int length) {
-    int32_t i = 0;
-    uint8_t bit = 0;
-    
-    for (i = length - 1; i >= 0; i--) {
-        // Isolate the i-th bit from the code
-        bit = (code >> i) & 1;
-        
-        // Write it to the current byte in the BitWriter
-        if (bit) {
-            // Write 1 to the current position using shifting and OR
-            bw->current |= (1 << (7 - bw->bit_pos));
-        }
-        
-        // Move to the next bit position
-        bw->bit_pos++;
-        
-        // Check if we have filled the current byte. If so, write it to the buffer, reset current byte and bit position.
-        if (bw->bit_pos == 8) {
-            bw_put_byte(bw, bw->current);           // delegate writing to bw_put_byte so byte stuffing is performed
-            bw->current = 0;
-            bw->bit_pos = 0;
-        }
-    }
-}
-
-void bw_put_byte(BitWriter *bw, uint8_t val) {
+void bw_put_byte(BitWriter *bw, uint8_t val)
+{
     bw->buffer[bw->byte_pos++] = val;
 
-    if(val == 0xFF)
-        bw->buffer[bw->byte_pos++] = 0x00;              // byte stuff so decoder can distinguish markers and payload
+    if (val == 0xFF)
+        bw->buffer[bw->byte_pos++] = 0x00;
 }
 
+static inline int ctz_64(uint64_t x)
+{
+    if (x == 0)
+        return 64;
+    uint64_t reversed = (uint64_t)__bit_reverse((unsigned long)x);
 
-VLI get_vli(int16_t value) {
-    VLI vli;
-    
-    int32_t abs_val = __abs(value);
-    
-    vli.len = 31 - __norm(abs_val);
-
-    // temp is either going to be a positive value, or a negative value but in one's complement!
-    int16_t temp = value + (value >> 15);
-
-    // masking the temp variable to write out only the lower vli.len bits.
-    vli.bits = temp & ((1 << vli.len) - 1);
-
-    return vli;
+    return (int)__leftmost_bit_detect_one((unsigned long)reversed);
 }
 
-int16_t encode_coefficients(int16_t* dct_block, int16_t prev_dc, BitWriter* bw) {
+void flush_bits(BitWriter *restrict bw)
+{
+    if (bw->bit_pos > 0)
+    {
+        uint8_t byte_val = (uint8_t)(bw->current >> 56);
 
-    uint32_t zeros_count = 0;
-    uint32_t i = 0;
-    uint8_t symbol;
-    int16_t val;
-    
-    // Predictive DC encoding
-    int16_t diff = dct_block[0] - prev_dc;
-    VLI vli = get_vli(diff);
-    
-    // Huffman DC encoding
-    HuffmanCode hc = huff_dc_lum[vli.len];
-    bw_write(bw, hc.code, hc.len);             // write DC Huffman code into bitstream
-    
-    if (vli.len > 0) {
-        bw_write(bw, vli.bits, vli.len);       // write DC VLI bits into bitstream
-    }
+        bw->buffer[bw->byte_pos++] = byte_val;
 
-    for (i = 1; i < 64; i++) {              // Skip DC component, start from AC components
-        val = dct_block[i];
-
-        if (val == 0) {
-            zeros_count++;
-        } else {
-            // Handle any preceding zeros
-            while (zeros_count > 15) {
-                // ZRL (Zero Run Length): 16 continuous zeros
-                // Symbol is 0xF0
-                // We perform Huffman encoding for ZRL
-                bw_write(bw, huff_ac_lum[0xF0].code, huff_ac_lum[0xF0].len);
-                zeros_count -= 16;
-            }
-
-            // Get VLI for the non-zero value
-            vli = get_vli(val);
-            
-            // Build the symbol: (RUNLENGTH << 4) | SIZE
-            symbol = (zeros_count << 4) | vli.len;
-            
-            // Get Huffman code for the symbol
-            bw_write(bw, huff_ac_lum[symbol].code, huff_ac_lum[symbol].len);
-            
-            // Write the actual bits of the value
-            bw_write(bw, vli.bits, vli.len);
-            
-            zeros_count = 0; 
+        if (byte_val == 0xFF)
+        {
+            bw->buffer[bw->byte_pos++] = 0x00;
         }
+
+        bw->bit_pos = 0;
+        bw->current = 0;
+    }
+}
+
+static inline void bw_write(BitWriter *restrict bw, uint32_t code, int length)
+{
+    int shift = 64 - bw->bit_pos - length;
+    bw->current |= ((uint64_t)code << shift);
+    bw->bit_pos += length;
+
+    while (bw->bit_pos >= 8)
+    {
+        uint8_t byte_val = (uint8_t)(bw->current >> 56);
+
+        bw->buffer[bw->byte_pos++] = byte_val;
+
+        if (byte_val == 0xFF)
+        {
+            bw->buffer[bw->byte_pos++] = 0x00;
+        }
+
+        bw->current <<= 8;
+        bw->bit_pos -= 8;
+    }
+}
+
+int16_t encode_coefficients(int16_t *restrict dct_block, int16_t prev_dc, BitWriter *restrict bw)
+{
+
+    int16_t diff = dct_block[0] - prev_dc;
+
+    int32_t abs_diff = __abs(diff);
+    int len = 0;
+    uint32_t bits = 0;
+
+    if (abs_diff != 0)
+    {
+        len = 31 - __norm(abs_diff);
+        int16_t temp = diff + (diff >> 15);
+        bits = temp & ((1 << len) - 1);
     }
 
-    // EOB handling
-    if (zeros_count > 0) {
-        // If there are trailing zeros, write EOB (symbol 0x00)
-        bw_write(bw, huff_ac_lum[0x00].code, huff_ac_lum[0x00].len);
+    HuffmanCode hc = huff_dc_lum[len];
+    bw_write(bw, (hc.code << len) | bits, hc.len + len);
+
+    short32 v_lo = *((short32 *)&dct_block[0]);
+    short32 v_hi = *((short32 *)&dct_block[32]);
+
+    __vpred pred_lo_zeros = __cmp_eq_pred(v_lo, (short32)0);
+    __vpred pred_hi_zeros = __cmp_eq_pred(v_hi, (short32)0);
+
+    uint64_t raw_lo = (uint64_t)__create_scalar(pred_lo_zeros);
+    uint64_t raw_hi = (uint64_t)__create_scalar(pred_hi_zeros);
+
+    uint64_t mask_const = 0x5555555555555555ULL;
+    uint64_t nz_mask_lo = (~(raw_lo & (raw_lo >> 1) & mask_const)) & mask_const;
+    uint64_t nz_mask_hi = (~(raw_hi & (raw_hi >> 1) & mask_const)) & mask_const;
+
+    nz_mask_lo &= ~1ULL;
+
+    int last_k = 0;
+
+    const HuffmanCode *restrict ac_table = huff_ac_lum;
+    const HuffmanCode huff_ZRL = ac_table[0xF0];
+
+    while (nz_mask_lo != 0)
+    {
+        int bit_idx = ctz_64(nz_mask_lo);
+        nz_mask_lo &= (nz_mask_lo - 1);
+        int curr_k = bit_idx >> 1;
+
+        int16_t val = dct_block[curr_k];
+        int zero_run = curr_k - last_k - 1;
+
+        if (zero_run >= 16)
+        {
+            int num_zrl = zero_run >> 4;
+            zero_run = zero_run & 0xF;
+
+            int z;
+            for (z = 0; z < num_zrl; z++)
+            {
+                bw_write(bw, huff_ZRL.code, huff_ZRL.len);
+            }
+        }
+
+        int32_t abs_val = __abs(val);
+        int vli_len = 31 - __norm(abs_val);
+        int16_t temp = val + (val >> 15);
+        uint32_t vli_bits = temp & ((1 << vli_len) - 1);
+
+        uint8_t symbol = (zero_run << 4) | vli_len;
+        HuffmanCode ac_hc = ac_table[symbol];
+
+        bw_write(bw, (ac_hc.code << vli_len) | vli_bits, ac_hc.len + vli_len);
+
+        last_k = curr_k;
     }
-        
-    // if (bw.bit_pos > 0) {
-    //     bw.buffer[bw.byte_pos++] = bw.current;      // Flush out the last byte if it has remaining bits
-    // }
-    
-    return dct_block[0];                       // Return current DC for next block's prediction       
+
+    while (nz_mask_hi != 0)
+    {
+        int bit_idx = ctz_64(nz_mask_hi);
+        nz_mask_hi &= (nz_mask_hi - 1);
+        int curr_k = 32 + (bit_idx >> 1);
+
+        int16_t val = dct_block[curr_k];
+        int zero_run = curr_k - last_k - 1;
+
+        if (zero_run >= 16)
+        {
+            int num_zrl = zero_run >> 4;
+            int z = 0;
+            zero_run = zero_run & 0xF;
+            for (z = 0; z < num_zrl; z++)
+            {
+                bw_write(bw, huff_ZRL.code, huff_ZRL.len);
+            }
+        }
+
+        int32_t abs_val = __abs(val);
+        int vli_len = 31 - __norm(abs_val);
+        int16_t temp = val + (val >> 15);
+        uint32_t vli_bits = temp & ((1 << vli_len) - 1);
+
+        uint8_t symbol = (zero_run << 4) | vli_len;
+        HuffmanCode ac_hc = ac_table[symbol];
+
+        bw_write(bw, (ac_hc.code << vli_len) | vli_bits, ac_hc.len + vli_len);
+
+        last_k = curr_k;
+    }
+
+    if (last_k < 63)
+    {
+        bw_write(bw, ac_table[0x00].code, ac_table[0x00].len);
+    }
+
+    return dct_block[0];
 }
