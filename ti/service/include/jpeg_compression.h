@@ -160,7 +160,7 @@ typedef struct
 
     VLI get_vli(int16_t value);
 
-    int16_t encode_coefficients(int16_t *dct_block, int16_t prev_dc, BitWriter* bw);
+    int16_t encode_coefficients(int16_t* dct_block, int16_t prev_dc, BitWriter* bw);
 
 
 
