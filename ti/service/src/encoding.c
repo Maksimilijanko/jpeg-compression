@@ -75,6 +75,9 @@ static inline void bw_write(BitWriter *restrict bw, uint32_t code, int length)
 
 int16_t encode_coefficients(int16_t *restrict dct_block, int16_t prev_dc, BitWriter *restrict bw)
 {
+    ASSERT_ALIGNED_64(huff_dc_lum);
+    ASSERT_ALIGNED_64(huff_ac_lum);
+    
     // difference between current DC coeff and the previous one
     int16_t diff = dct_block[0] - prev_dc;
 

@@ -6,6 +6,7 @@
 * https://www.w3.org/Graphics/JPEG/itu-t81.pdf (page 149+)
 */
 
+#pragma DATA_ALIGN(huff_dc_lum, 64)
 const HuffmanCode huff_dc_lum[16] = {
     {0x00, 2},  // Size 0
     {0x02, 3},  // Size 1
@@ -23,6 +24,7 @@ const HuffmanCode huff_dc_lum[16] = {
 };
 
 // Standard AC Luminance Table
+#pragma DATA_ALIGN(huff_ac_lum, 64)
 const HuffmanCode huff_ac_lum[256] = {
     
     // --- Length 2 (Codes: 00..01) ---
