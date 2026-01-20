@@ -50,10 +50,10 @@ typedef struct
     uint64_t phys_addr_r;                   // R planar
     uint64_t phys_addr_gb;                   // G and B planar
     // uint64_t phys_addr_b;                   // B planar
-    uint64_t phys_addr_intermediate_1;      // a buffer to write intermediate results on C7x side (we perform allocation on host/A72 side)
-    uint64_t phys_addr_intermediate_2;
-    uint64_t phys_addr_intermediate_3;    
-    uint64_t phys_addr_dct_buff;
+    // uint64_t phys_addr_intermediate_1;      // a buffer to write intermediate results on C7x side (we perform allocation on host/A72 side)
+    // uint64_t phys_addr_intermediate_2;
+    // uint64_t phys_addr_intermediate_3;    
+    // uint64_t phys_addr_dct_buff;
     uint64_t phys_addr_y_out;               // return value
     uint32_t output_size;
 } JPEG_COMPRESSION_DTO;
