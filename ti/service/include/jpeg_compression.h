@@ -151,6 +151,11 @@ typedef struct
 
     int16_t encode_coefficients(int16_t* dct_block, int16_t prev_dc, BitWriter* bw);
 
+    inline void encode_block_batch(int16_t *restrict zigzag_data, 
+                                      int16_t *restrict prev_dc_ptr, 
+                                      BitWriter *restrict bw, 
+                                      int num_blocks);
+
 
 
 #endif 

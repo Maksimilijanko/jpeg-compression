@@ -216,3 +216,19 @@ int16_t encode_coefficients(int16_t *restrict dct_block, int16_t prev_dc, BitWri
 
     return dct_block[0];
 }
+
+inline void encode_block_batch(int16_t *restrict zigzag_data, 
+                                      int16_t *restrict prev_dc_ptr, 
+                                      BitWriter *restrict bw, 
+                                      int num_blocks)
+{
+    int16_t dc = *prev_dc_ptr; 
+    uint32_t i = 0;
+
+    for (i = 0; i < num_blocks; i++)
+    {
+        dc = encode_coefficients(zigzag_data + (i * 64), dc, bw);
+    }
+
+    *prev_dc_ptr = dc;
+}

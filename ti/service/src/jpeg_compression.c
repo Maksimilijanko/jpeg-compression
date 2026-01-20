@@ -95,6 +95,15 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     fetch_setup(vec_r, vec_gb, total_pixels);
     init_zigzag();
 
+    BitWriter bw;
+    // write the result into vec_y
+    bw.buffer = vec_y;
+    bw.byte_pos = 0;
+    bw.bit_pos = 0;
+    bw.current = 0;
+
+    int16_t global_prev_dc = 0;
+
     for(i = 0; i < total_blocks; i += num_blocks) {
         #ifdef DEBUG_CYCLE_COUNT
             start = __TSC;
@@ -129,32 +138,26 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
             total_zig_zag_time += __TSC - start;
             start = __TSC;
         #endif
-
-        // copy it to one big intermediate buffer for performing encoding
-        memcpy(vec_interm_buffer_3 + i * 64, zigzagged, 64 * 2 * num_blocks);        // copy two blocks of uint16_t
+        
+        encode_block_batch(zigzagged, &global_prev_dc, &bw, num_blocks);
 
         #ifdef DEBUG_CYCLE_COUNT
-            // total_quantization_time += __TSC - start;
+            total_encoding_time += __TSC - start;
             start = __TSC;
         #endif
+
     }
 
-    BitWriter bw;
-    // write the result into vec_y
-    bw.buffer = vec_y;
-    bw.byte_pos = 0;
-    bw.bit_pos = 0;
-    bw.current = 0;
 
-    #ifdef DEBUG_CYCLE_COUNT
-        start = __TSC;
-    #endif
+    // #ifdef DEBUG_CYCLE_COUNT
+    //     start = __TSC;
+    // #endif
 
 
-    int16_t prev_dc = 0;
-    for(i = 0; i < total_blocks; i++) {
-        prev_dc = encode_coefficients(vec_interm_buffer_3 + (i * 64), prev_dc, &bw);
-    }
+    // int16_t prev_dc = 0;
+    // for(i = 0; i < total_blocks; i++) {
+    //     prev_dc = encode_coefficients(vec_interm_buffer_3 + (i * 64), prev_dc, &bw);
+    // }
 
     // clean out the remaining byte from BW
     flush_bits(&bw);
@@ -162,10 +165,10 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
     // Write out output size so A72 can perform serialization
     packet->output_size = bw.byte_pos;
 
-    #ifdef DEBUG_CYCLE_COUNT
-        total_encoding_time = __TSC - start;
-        start = __TSC;
-    #endif
+    // #ifdef DEBUG_CYCLE_COUNT
+    //     total_encoding_time = __TSC - start;
+    //     start = __TSC;
+    // #endif
 
     // CACHE WRITEBACK (After processing)
     // Push data from cache to DDR so A72 can read it. 
