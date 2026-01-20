@@ -139,7 +139,8 @@ int16_t encode_coefficients(int16_t *restrict dct_block, int16_t prev_dc, BitWri
         int curr_k = bit_idx >> 1;                      // divide by two (because we are using two bits per short so the right index in terms of shorts is /2)
 
         // TODO: use vector scalar extraction
-        int16_t val = dct_block[curr_k];                // fetch that selected short value
+        // int16_t val = dct_block[curr_k];                // fetch that selected short value
+        int16_t val = v_lo.s[curr_k];
         int zero_run = curr_k - last_k - 1;             // calculate the zero run 
 
         if (zero_run >= 16)                             // if run is longer than 16, write the ZRL symbols
@@ -176,7 +177,8 @@ int16_t encode_coefficients(int16_t *restrict dct_block, int16_t prev_dc, BitWri
         nz_mask_hi &= (nz_mask_hi - 1);
         int curr_k = 32 + (bit_idx >> 1);
 
-        int16_t val = dct_block[curr_k];
+        // int16_t val = dct_block[curr_k];
+        int16_t val = v_hi.s[bit_idx >> 1];
         int zero_run = curr_k - last_k - 1;
 
         if (zero_run >= 16)
