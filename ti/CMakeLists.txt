@@ -52,7 +52,7 @@ set(CL7X_COMPILER   "${CGT7X_ROOT}/bin/cl7x")
 
 set(DEBUG_OUT_DIR   "${CMAKE_CURRENT_BINARY_DIR}/ti_debug_analysis")
 
-set(C7X_DEBUG_FLAGS "-O3")
+set(C7X_DEBUG_FLAGS "-O4")
 list(APPEND C7X_DEBUG_FLAGS "--gen_opt_info=2")
 list(APPEND C7X_DEBUG_FLAGS "-k")
 list(APPEND C7X_DEBUG_FLAGS "--src_interlist")

@@ -121,10 +121,6 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
     // Allocate contiguous memory in DDR
     uint8_t *shared_input_virt = appMemAlloc(APP_MEM_HEAP_DDR, total_input_size, 64);
     uint8_t *shared_output_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
-    int8_t *shared_intermediate_1_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size, 64);
-    int16_t *shared_intermediate_2_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(int16_t), 64);    // we make it 2x larger because quantized DCT coeffs are represented with 2B each.
-    int16_t *shared_intermediate_3_virt = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(int16_t), 64); 
-    float   *shared_intermediate_dct_buff = appMemAlloc(APP_MEM_HEAP_DDR, plane_size * sizeof(float), 64);
 
     if (!shared_input_virt || !shared_output_virt) {
         printf("[A72] Error: Memory allocation failed!\n");
@@ -143,24 +139,6 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
             ptr_gb[k + j + 32] = original_rgb_data[i + j].b;
         }
     }
-
-    // DEBUG INFO
-    printf("\n");
-    for(int i = 1; i <= 64; i++)
-    {
-        printf("%d ", ptr_r[i]);
-        if(i % 8 == 0)
-            printf("\n");
-    }
-    printf("\n");
-    for(int i = 1; i <= 64; i++)
-    {
-        printf("%d ", ptr_gb[i]);
-        if(i % 8 == 0)
-            printf("\n");
-    }
-    printf("\n");
- 
     
     // CACHE WRITEBACK: Push data from A72 Cache to DDR so C7x can see it
     appMemCacheWb(shared_input_virt, total_input_size);
@@ -175,13 +153,8 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
     
     packet.phys_addr_r = input_phys_base;
     packet.phys_addr_gb = input_phys_base + plane_size;
-    // packet.phys_addr_b = input_phys_base + (2 * plane_size);
     
     packet.phys_addr_y_out = appMemGetVirt2PhyBufPtr((uint64_t)shared_output_virt, APP_MEM_HEAP_DDR);
-    packet.phys_addr_intermediate_1 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_1_virt, APP_MEM_HEAP_DDR);
-    packet.phys_addr_intermediate_2 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_2_virt, APP_MEM_HEAP_DDR);
-    packet.phys_addr_intermediate_3 = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_3_virt, APP_MEM_HEAP_DDR);
-    packet.phys_addr_dct_buff = appMemGetVirt2PhyBufPtr((uint64_t)shared_intermediate_dct_buff, APP_MEM_HEAP_DDR);
 
     
     printf("[A72] Sending IPC message to C7x...\n");
@@ -205,10 +178,6 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
 
     // CACHE INVALIDATE: Pull data from DDR to A72 Cache to see what C7x wrote
     appMemCacheInv(shared_output_virt, plane_size);
-    appMemCacheInv(shared_intermediate_1_virt, plane_size);
-    appMemCacheInv(shared_intermediate_2_virt, plane_size * 2);
-    appMemCacheInv(shared_intermediate_3_virt, plane_size * 2);
-    appMemCacheInv(shared_intermediate_dct_buff, plane_size * 4);
 
     // Copy result to out buffer
     *result_size = packet.output_size;
@@ -217,8 +186,4 @@ void send_image_to_c7x(RGB* original_rgb_data, int width, int height, uint8_t* r
     // Free Memory
     appMemFree(APP_MEM_HEAP_DDR, shared_input_virt, total_input_size);
     appMemFree(APP_MEM_HEAP_DDR, shared_output_virt, plane_size);
-    appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_1_virt, plane_size);
-    appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_2_virt, plane_size * 2);
-    appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_3_virt, plane_size * 2);
-    appMemFree(APP_MEM_HEAP_DDR, shared_intermediate_dct_buff, plane_size * 4);
 }
