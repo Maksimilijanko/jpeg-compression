@@ -105,8 +105,6 @@ typedef struct
     // Service initialization function
     int32_t JpegCompression_Init();
 
-    // Convert RGB color space to Y
-    void rgb_to_y(uint8_t *r_ptr, uint8_t *g_ptr, uint8_t *b_ptr, int8_t *y_ptr, int num_pixels);
 
     void perform_dct_on_blocks(int8_t * restrict b_start, float * restrict dct_coeffs, int8_t num_blocks);
 
