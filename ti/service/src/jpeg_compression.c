@@ -120,7 +120,6 @@ int32_t JpegCompression_RemoteServiceHandler(char *service_name, uint32_t cmd, v
             start = __TSC;
         #endif
 
-        // perform quantization on two blocks at once
         quantize_block(dct_block, quantized_dct, NUM_BLOCKS);
 
         #ifdef DEBUG_CYCLE_COUNT

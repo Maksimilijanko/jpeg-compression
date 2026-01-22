@@ -29,6 +29,4 @@ typedef struct {
 RGB* read_pixels(uint8_t* pixel_data, uint32_t width, uint32_t height, int orientation);
 
 
-YCbCr* rgb_to_ycbcr(RGB* pixels, uint32_t width, uint32_t height);
-
 #endif
